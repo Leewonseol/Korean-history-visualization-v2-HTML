@@ -1,0 +1,397 @@
+/* ==========================================================================
+   1432~1435 조선-건주여진-명 관계 네트워크 — 연구용 인터랙티브 시각화
+   ========================================================================== */
+
+:root {
+  --bg: #f7f5f0;
+  --panel-bg: #ffffff;
+  --ink: #1f2328;
+  --ink-soft: #565f6b;
+  --muted: #8a8f98;
+  --border: #dcd8cd;
+  --accent: #2b4c7e;
+  --accent-soft: #e6ecf5;
+  --serif: "Noto Serif KR", "Nanum Myeongjo", serif;
+  --sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, sans-serif;
+  --radius: 6px;
+  --header-h: 92px;
+  --footer-h: 52px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161a;
+    --panel-bg: #1b1e24;
+    --ink: #e7e5df;
+    --ink-soft: #b6bac2;
+    --muted: #83898f;
+    --border: #33363c;
+    --accent: #7ea0d8;
+    --accent-soft: #23324a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14161a;
+  --panel-bg: #1b1e24;
+  --ink: #e7e5df;
+  --ink-soft: #b6bac2;
+  --muted: #83898f;
+  --border: #33363c;
+  --accent: #7ea0d8;
+  --accent-soft: #23324a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+/* ---------------------------------- 헤더 ---------------------------------- */
+.site-header {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+.site-header h1 {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  margin: 0 0 4px 0;
+  font-weight: 700;
+}
+.site-sub {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ---------------------------------- 레이아웃 ---------------------------------- */
+#app {
+  display: grid;
+  grid-template-columns: 260px 1fr 340px;
+  gap: 1px;
+  background: var(--border);
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+}
+
+.panel {
+  background: var(--panel-bg);
+  padding: 14px 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - var(--header-h) - var(--footer-h));
+}
+
+.panel h2 {
+  font-family: var(--serif);
+  font-size: 1rem;
+  margin: 0 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+}
+
+#panel-main {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---------------------------------- 네트워크 캔버스 ---------------------------------- */
+#cy-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 420px;
+  background:
+    radial-gradient(circle at 15% 10%, var(--accent-soft) 0%, transparent 45%),
+    var(--panel-bg);
+}
+#cy {
+  position: absolute;
+  inset: 0;
+}
+
+.btn-float {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+}
+
+/* ---------------------------------- 타임라인 ---------------------------------- */
+#timeline-bar {
+  background: var(--panel-bg);
+  border-top: 1px solid var(--border);
+  padding: 10px 20px 14px;
+}
+
+.timeline-current {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.current-date {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.current-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+#timelineSlider {
+  width: 100%;
+  margin: 6px 0 10px;
+  accent-color: var(--accent);
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button, select {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+}
+
+.timeline-controls button, .timeline-controls select {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--ink);
+  cursor: pointer;
+}
+.timeline-controls button:hover, .timeline-controls select:hover {
+  border-color: var(--accent);
+}
+#btnPlayPause {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  min-width: 84px;
+}
+.btn-story {
+  margin-left: auto;
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------------------------------- 공용 버튼 ---------------------------------- */
+.btn {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-block { width: 100%; margin: 6px 0 14px; }
+
+/* ---------------------------------- 필터 패널 ---------------------------------- */
+.filter-group { margin-bottom: 18px; }
+.filter-group h3 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 8px 0;
+}
+.filter-list { display: flex; flex-direction: column; gap: 6px; }
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.83rem;
+  cursor: pointer;
+}
+.filter-item input { accent-color: var(--accent); cursor: pointer; }
+.filter-swatch {
+  width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ---------------------------------- 범례 ---------------------------------- */
+.legend-block { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--ink-soft); }
+.legend-line {
+  width: 30px; height: 0; flex-shrink: 0;
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+
+/* ---------------------------------- 사건/인물 패널 ---------------------------------- */
+#panel-detail section { margin-bottom: 22px; }
+
+.event-card { display: flex; flex-direction: column; gap: 8px; }
+.event-date { font-family: var(--serif); font-weight: 700; color: var(--accent); }
+.event-title { font-size: 1.05rem; font-weight: 700; }
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 4px;
+  border: 1px solid transparent;
+}
+.badge-confirmed { background: #e6f2e9; color: #276b3e; border-color: #b6dcc1; }
+.badge-contemporary_claim { background: #f3ecfb; color: #6a3fa0; border-color: #d9c6f0; }
+.badge-disputed { background: #fbeeea; color: #a3462a; border-color: #f0c9ba; }
+.badge-interpretation { background: #eef1f4; color: #55606b; border-color: #cfd6dd; }
+.badge-claim { background: #f3ecfb; color: #6a3fa0; border-color: #d9c6f0; }
+.badge-category { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.event-summary { font-size: 0.88rem; line-height: 1.55; color: var(--ink); }
+.event-people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.person-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.person-chip:hover { border-color: var(--accent); color: var(--accent); }
+.source-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.source-link:hover { text-decoration: underline; }
+
+.detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.detail-name { font-family: var(--serif); font-size: 1.2rem; font-weight: 700; }
+.detail-cluster { font-size: 0.75rem; color: var(--ink-soft); margin-bottom: 10px; }
+.timeline-list { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--border); }
+.timeline-list li {
+  position: relative;
+  padding: 2px 0 14px 16px;
+}
+.timeline-list li::before {
+  content: "";
+  position: absolute;
+  left: -6px; top: 4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--panel-bg);
+}
+.timeline-list .tl-date { font-weight: 700; font-size: 0.78rem; color: var(--accent); }
+.timeline-list .tl-role { font-size: 0.85rem; font-weight: 600; margin: 1px 0; }
+.timeline-list .tl-status { display: flex; gap: 4px; flex-wrap: wrap; margin: 3px 0; }
+.timeline-list .tl-desc { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.5; }
+
+.status-chip {
+  font-size: 0.68rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.status-chip.warn { background: #fbeeea; color: #a3462a; border-color: #e9a98c; }
+.status-chip.reward { background: #eaf3e3; color: #4c7a2f; border-color: #b9d69e; }
+
+.edge-rel-list { margin-top: 14px; }
+.edge-rel-list h4 { font-size: 0.78rem; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.03em; }
+.edge-rel-item { font-size: 0.8rem; padding: 6px 0; border-bottom: 1px dashed var(--border); line-height: 1.5; }
+.edge-rel-item .rel-type { font-weight: 700; }
+
+.muted { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+
+/* 세종 정책결정 변화 전용 패널 */
+.sejong-panel .detail-name::before { content: "👑 "; }
+.sejong-stage {
+  border-left: 2px solid var(--accent);
+  padding: 2px 0 16px 16px;
+  position: relative;
+}
+.sejong-stage::before {
+  content: attr(data-stage);
+  position: absolute;
+  left: -13px; top: 0;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.sejong-stage.current { background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+
+/* ---------------------------------- 스토리 모드 오버레이 ---------------------------------- */
+.story-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 22, 26, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 20;
+  padding: 24px;
+}
+.story-overlay.hidden { display: none; }
+.story-box {
+  background: var(--panel-bg);
+  border-radius: 10px;
+  padding: 18px 22px;
+  max-width: 720px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+}
+.story-title { font-family: var(--serif); font-size: 1.15rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.story-narration { font-size: 0.92rem; line-height: 1.6; margin-bottom: 14px; }
+.story-controls { display: flex; align-items: center; gap: 10px; }
+.story-step { font-size: 0.8rem; color: var(--muted); margin-right: auto; }
+
+.hidden { display: none !important; }
+
+/* ---------------------------------- 푸터 ---------------------------------- */
+.site-footer {
+  padding: 10px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-bg);
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ---------------------------------- 반응형 ---------------------------------- */
+@media (max-width: 980px) {
+  #app {
+    grid-template-columns: 1fr;
+  }
+  .panel, #panel-main { max-height: none; }
+  #cy-wrap { min-height: 60vh; }
+  .btn-story { margin-left: 0; }
+
+  /* 모바일에서는 네트워크와 사건 패널을 먼저 보여주고 필터는 아래로 */
+  #panel-main { order: 1; }
+  #panel-detail { order: 2; }
+  #panel-filters { order: 3; }
+}

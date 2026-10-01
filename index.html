@@ -3,109 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>1432~1435 조선-건주여진-명 관계 네트워크</title>
-<meta name="description" content="세종실록 1차 사료 기반, 1432~1435년 조선·건주여진·주변 여진·명 관계의 시간가변 네트워크 시각화">
+<title>세종대 북방 군사·행정 시간 네트워크 1432–1449</title>
+<meta name="description" content="세종실록 기반 1432~1449 북방 군사·행정정책의 temporal · multilevel · multilayer · spatial network. Who gets What, When, How, Where, with What Outcome.">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
 </head>
 <body>
 
 <header class="site-header">
-  <h1>1432~1435 조선 · 건주여진 · 주변 여진 · 명 관계 네트워크</h1>
-  <p class="site-sub">세종실록 1차 사료 기반 시간가변(time-varying) 네트워크 시각화 — 국경 침입에 대한 조선의 의사결정이 어떻게 움직였는가</p>
+  <div>
+    <h1>세종대 북방 군사·행정 시간 네트워크 <span class="h1-range" id="dataRange"></span></h1>
+    <p class="site-sub">Who gets <b>What</b>, <b>When</b>, <b>How</b>, <b>Where</b>, and with What <b>Outcome</b> — 중앙 정책결정 → 지휘 → 현장 실행 → 결과 → 보고 → 새 정책결정의 시간 순서 복원</p>
+  </div>
+  <div class="header-right">
+    <button id="validationBadge" class="validation-badge" type="button" title="데이터 검증 결과"></button>
+    <button id="btnStoryMode" class="btn btn-story" type="button">스토리 모드</button>
+  </div>
 </header>
+<div id="validationDetail" class="validation-detail hidden"></div>
+<div id="coverageNote" class="coverage-note"></div>
 
 <div id="app">
 
-  <!-- 왼쪽: 필터 -->
-  <aside id="panel-filters" class="panel">
+  <!-- LEFT: 필터 -->
+  <aside id="panel-filters" class="panel" aria-label="필터">
     <h2>필터</h2>
 
     <div class="filter-group">
-      <h3>세력</h3>
-      <div id="filterFaction" class="filter-list"></div>
+      <h3>기간</h3>
+      <div class="period-row">
+        <select id="periodFrom" aria-label="시작 연도"></select>
+        <span>~</span>
+        <select id="periodTo" aria-label="끝 연도"></select>
+      </div>
+      <label class="check"><input type="checkbox" id="limitToCursor" checked> 타임라인 커서까지만</label>
+      <div class="seg" id="windowMode" role="radiogroup" aria-label="표시 창">
+        <button type="button" data-mode="cumulative" class="on">누적</button>
+        <button type="button" data-mode="recent12">최근 12개월</button>
+        <button type="button" data-mode="event">현재 사건만</button>
+      </div>
     </div>
 
     <div class="filter-group">
-      <h3>관계 유형</h3>
-      <div id="filterRelation" class="filter-list"></div>
+      <h3>행위자 level <button class="mini-link" data-all="filterLevel" type="button">전체</button></h3>
+      <div id="filterLevel" class="filter-list"></div>
+    </div>
+    <div class="filter-group">
+      <h3>관계 layer <button class="mini-link" data-all="filterLayer" type="button">전체</button> <button class="mini-link" data-none="filterLayer" type="button">해제</button></h3>
+      <div id="filterLayer" class="filter-list"></div>
+    </div>
+    <div class="filter-group">
+      <h3>전구(theater)</h3>
+      <div id="filterTheater" class="filter-list"></div>
+    </div>
+    <div class="filter-group">
+      <h3>확실성(certainty)</h3>
+      <div id="filterCertainty" class="filter-list"></div>
+    </div>
+    <div class="filter-group">
+      <h3>사료 유형</h3>
+      <div id="filterSourceType" class="filter-list"></div>
+    </div>
+    <div class="filter-group">
+      <h3>노드 크기 지표</h3>
+      <select id="metricSelect" aria-label="노드 크기 지표"></select>
+      <label class="check"><input type="checkbox" id="showPlaces"> 장소 노드 겹쳐 보기</label>
     </div>
 
-    <button id="btnResetFilters" class="btn btn-ghost btn-block">필터 초기화</button>
+    <button id="btnResetFilters" class="btn btn-ghost btn-block" type="button">필터 초기화</button>
 
     <div class="filter-group">
       <h3>범례</h3>
-      <div id="legendCertainty" class="legend-block"></div>
-      <div id="legendRelation" class="legend-block"></div>
+      <div id="legend" class="legend-block"></div>
     </div>
   </aside>
 
-  <!-- 가운데: 네트워크 + 타임라인 -->
+  <!-- CENTER: 네트워크 + 타임라인 -->
   <main id="panel-main">
     <div id="cy-wrap">
-      <div id="cy"></div>
+      <div id="cy" aria-label="시간 다층 네트워크"></div>
+      <div id="netStatus" class="net-status"></div>
+      <button id="btnFit" class="btn btn-ghost btn-sm btn-fit" type="button" title="전체 레이아웃 보기">화면 맞춤</button>
       <div id="storyOverlay" class="story-overlay hidden">
         <div class="story-box">
           <div class="story-title" id="storyTitle"></div>
           <div class="story-narration" id="storyNarration"></div>
           <div class="story-controls">
-            <button id="storyPrev" class="btn btn-ghost">◀ 이전 장면</button>
+            <button id="storyPrev" class="btn btn-ghost" type="button">◀ 이전 장면</button>
             <span id="storyStep" class="story-step"></span>
-            <button id="storyNext" class="btn btn-ghost">다음 장면 ▶</button>
-            <button id="storyExit" class="btn btn-primary">스토리 모드 종료</button>
+            <button id="storyNext" class="btn btn-ghost" type="button">다음 장면 ▶</button>
+            <button id="storyExit" class="btn btn-primary" type="button">종료</button>
           </div>
         </div>
       </div>
-      <button id="btnClearHighlight" class="btn btn-ghost btn-float hidden">인물 강조 해제</button>
     </div>
 
     <div id="timeline-bar">
       <div class="timeline-current">
-        <span id="currentDate" class="current-date">1432-12-09</span>
-        <span id="currentEventTitle" class="current-title">여연 침입과 박초의 추격</span>
+        <span id="currentDate" class="current-date"></span>
+        <span id="currentEventTitle" class="current-title"></span>
+        <span id="currentCounter" class="current-counter"></span>
       </div>
-
-      <input type="range" id="timelineSlider" min="0" max="27" step="1" value="0">
-
+      <div id="eventStrip" class="event-strip" aria-label="사건 분포"></div>
+      <input type="range" id="timelineSlider" min="0" max="0" step="1" value="0" aria-label="사건 타임라인">
       <div class="timeline-controls">
-        <button id="btnFirst" title="처음으로">⏮</button>
-        <button id="btnPrev" title="이전 사건">◀ 이전</button>
-        <button id="btnPlayPause" title="재생/일시정지">▶ 재생</button>
-        <button id="btnNext" title="다음 사건">다음 ▶</button>
-        <select id="speedSelect" title="재생속도">
+        <button id="btnFirst" title="처음으로" type="button">⏮</button>
+        <button id="btnPrev" title="이전 사건" type="button">◀ 이전</button>
+        <button id="btnPlayPause" title="재생/일시정지" type="button">▶ 재생</button>
+        <button id="btnNext" title="다음 사건" type="button">다음 ▶</button>
+        <select id="speedSelect" title="재생속도" aria-label="재생속도">
           <option value="0.5">0.5×</option>
           <option value="1" selected>1×</option>
           <option value="2">2×</option>
         </select>
-        <button id="btnStoryMode" class="btn btn-story">📖 스토리 모드</button>
+        <div id="yearJumps" class="year-jumps" aria-label="연도 이동"></div>
       </div>
     </div>
   </main>
 
-  <!-- 오른쪽: 사건/인물 상세 -->
-  <aside id="panel-detail" class="panel">
-    <section id="eventPanel">
-      <h2>현재 사건</h2>
-      <div id="eventPanelBody"></div>
-    </section>
-
-    <section id="detailPanel">
-      <h2>인물 상세 (노드를 클릭하세요)</h2>
-      <div id="detailPanelBody">
-        <p class="muted">네트워크에서 인물을 클릭하면 1432~1435년 활동이 시간순으로 표시됩니다. 세종을 클릭하면 정책결정 변화 전용 패널이 표시됩니다.</p>
-      </div>
-    </section>
+  <!-- RIGHT: 탭 -->
+  <aside id="panel-detail" class="panel" aria-label="상세">
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="event" role="tab" type="button">사건</button>
+      <button class="tab" data-tab="person" role="tab" type="button">인물</button>
+      <button class="tab" data-tab="analysis" role="tab" type="button">분석</button>
+    </div>
+    <section id="tab-event" class="tab-body"></section>
+    <section id="tab-person" class="tab-body hidden"></section>
+    <section id="tab-analysis" class="tab-body hidden"></section>
   </aside>
 
 </div>
 
 <footer class="site-footer">
-  <p>데이터 출처: <a href="https://sillok.history.go.kr/" target="_blank" rel="noopener">조선왕조실록(국사편찬위원회)</a>.
-  모든 관계선은 사료에 근거하며, 당사자의 주장(<span class="badge badge-claim">주장</span>)과 확인된 사실(<span class="badge badge-confirmed">사실</span>)을 구분해 표시합니다.
-  임의로 추가되거나 추론된 상하관계는 없습니다.</p>
+  <p>주 사료: <a href="https://sillok.history.go.kr/search/inspectionMonthList.do?id=kda" target="_blank" rel="noopener">조선왕조실록 세종실록(국사편찬위원회)</a>.
+  네트워크 edge는 사료에서 확인된 구체적 행위만으로 만들며, 같은 기사에 이름이 함께 나온다는 이유만으로 관계를 만들지 않습니다.
+  실선 = 사료 기록 사실 · 점선 = 당대 주장/다툼 · 파선 = 해석/2차/미검증 시드.</p>
 </footer>
 
-<script src="data.js"></script>
-<script src="app.js"></script>
+<script type="module" src="src/app.js"></script>
 </body>
 </html>

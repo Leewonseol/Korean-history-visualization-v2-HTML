@@ -1,6 +1,11 @@
 /* ==========================================================================
    STORY — 스토리 모드 장면. 장면은 '문장(statement)' 단위로 근거를 가진다.
-   statement = { text, eventIds, sourceIds, narrativeStatus, provenance }
+   statement = { text, eventIds, sourceIds, narrativeStatus, provenance, claims? }
+   claim     = { text, eventIds, sourceIds, evidenceClass, claimType, certainty }   (문장 안의 사실·추론·서사를 분리)
+     claimType: FACTUAL(사료 서술) / INFERRED(정규화·pack 지침에서 끌어낸 판단) / NARRATIVE(편집자 서사·해석)
+     evidenceClass(vocab.EVIDENCE_CLASS): DIRECT / NORMALIZED / LEGACY / INTERPRETATION
+   하위호환: claims가 없는 문장은 문장 전체를 claim 1개로 자동 변환(claimsMigrated: true),
+   옛 형식 장면({ narration })은 해석 문장 1개로 변환해 기본 화면에서 숨긴다.
      narrativeStatus (vocab.NARRATIVE_STATUS): direct_evidence / normalized_summary / interpretation
      provenance (vocab.PROVENANCE): pack_v1_direct / pack_v1_derived / inherited_v2 / legacy_anchor_seed / interpretation
    - 서술은 해당 EVENTS의 evidenceSummary를 넘어서는 사실을 담지 않는다.
@@ -9,7 +14,25 @@
    - 초점 노드는 장면 사건들의 참여자에서 자동 계산한다. 주인공을 정하지 않는다.
    ========================================================================== */
 const PD = "pack_v1_direct", PV = "pack_v1_derived", L2 = "inherited_v2", INT = "interpretation";
-const st = (text, eventIds, sourceIds, narrativeStatus, provenance) => ({ text, eventIds, sourceIds, narrativeStatus, provenance });
+const st = (text, eventIds, sourceIds, narrativeStatus, provenance, claims) => ({ text, eventIds, sourceIds, narrativeStatus, provenance, ...(claims ? { claims } : {}) });
+const cl = (text, eventIds, sourceIds, evidenceClass, claimType, certainty = "confirmed") => ({ text, eventIds, sourceIds, evidenceClass, claimType, certainty });
+const CLASS_OF_PROV = { pack_v1_direct: "DIRECT", pack_v1_derived: "NORMALIZED", inherited_v2: "LEGACY", legacy_anchor_seed: "LEGACY", interpretation: "INTERPRETATION" };
+
+/** 문장 → claims(하위호환 변환 포함) */
+export function claimsOf(statement) {
+  if (Array.isArray(statement.claims) && statement.claims.length) return statement.claims;
+  const ec = CLASS_OF_PROV[statement.provenance] || "UNKNOWN";
+  return [{ text: statement.text, eventIds: statement.eventIds, sourceIds: statement.sourceIds, evidenceClass: ec,
+    claimType: statement.narrativeStatus === "interpretation" ? "NARRATIVE" : "FACTUAL",
+    certainty: ec === "INTERPRETATION" ? "interpretation" : "confirmed", migrated: true }];
+}
+/** 장면 하위호환: 옛 { narration } 형식을 해석 문장 1개로 */
+export function normalizeScene(sc) {
+  if (Array.isArray(sc.statements)) return { ...sc, statements: sc.statements.map((x) => ({ ...x, claims: claimsOf(x), claimsMigrated: !x.claims })) };
+  const statements = [{ text: sc.narration || "", eventIds: sc.eventIds || [], sourceIds: [], narrativeStatus: "interpretation",
+    provenance: "interpretation", legacyFormat: true }];
+  return { ...sc, statements: statements.map((x) => ({ ...x, claims: claimsOf(x), claimsMigrated: true })) };
+}
 const SUM = "normalized_summary", DIR = "direct_evidence", IN = "interpretation";
 
 function scene(id, title, statements) {
@@ -17,16 +40,21 @@ function scene(id, title, statements) {
   return { id, title, eventIds, statements };
 }
 
-export const STORY_SCENES = [
+const RAW_SCENES = [
   scene("S01", "1432.12 — 여연 침입과 이틀 뒤의 화포 논의", [
     st("약 400기의 야인이 여연에 들어오고 강계절제사 박초가 추격한다(평안도 감사 보고, 조선 측 13명 사망·25명 부상). 침입·추격 일자는 기사에 없다.",
-      ["E1432_1209"], ["SRC_1432_1209"], SUM, PD),
+      ["E1432_1209"], ["SRC_1432_1209"], SUM, PD, [
+        cl("약 400기의 야인이 여연에 들어오고 강계절제사 박초가 추격했다(평안도 감사 보고).", ["E1432_1209"], ["SRC_1432_1209"], "DIRECT", "FACTUAL"),
+        cl("조선 측 13명 사망·25명 부상 — 조선 측 보고 수치.", ["E1432_1209"], ["SRC_1432_1209"], "DIRECT", "FACTUAL"),
+        cl("침입·추격 일자는 기사에 없어 '기사일 이전'으로만 둔다.", ["E1432_1209"], ["SRC_1432_1209"], "NORMALIZED", "INFERRED")]),
     st("이틀 뒤 조정은 화포 교습·철환 공급·석성/목책을 논의한다.", ["E1432_1211"], ["SRC_1432_1211"], SUM, PD),
     st("pack은 이천이 이때 이미 북방 방어 정책 네트워크 안에 있다고 적는다.", ["E1432_1211"], ["SRC_1432_1211"], DIR, PD)
   ]),
   scene("S02", "1432.12 — 엇갈리는 주장, 진위를 따지는 조정", [
     st("유을합이 피로인 7명을 데려오고, 이만주 측은 홀라온 우디거의 소행이라 주장한다(주장 — 점선).",
-      ["E1432_1221"], ["SRC_1432_1221"], SUM, PD),
+      ["E1432_1221"], ["SRC_1432_1221"], SUM, PD, [
+        cl("유을합이 피로인 7명을 데려왔다.", ["E1432_1221"], ["SRC_1432_1221"], "DIRECT", "FACTUAL"),
+        cl("이만주 측이 홀라온 우디거의 소행이라고 주장했다 — 주장이 있었다는 사실이지 주장 내용이 사실이라는 뜻이 아님.", ["E1432_1221"], ["SRC_1432_1221"], "DIRECT", "FACTUAL", "contemporary_claim")]),
     st("조정은 그 주장이 사실인지 날조인지 명시적으로 논쟁하고, 홍사석은 돌아올 조사관으로 언급된다.",
       ["E1432_1221", "E1432_INVEST"], ["SRC_1432_1221"], SUM, PD),
     st("홍사석을 누가 언제 보냈는지는 pack에 없다. 세종의 파견 명령은 v2 데이터에서만 온다.",
@@ -52,14 +80,18 @@ export const STORY_SCENES = [
   scene("S06", "1433.05 — 보고, 포상(노비 하사 포함), 전사자 예우", [
     st("최윤덕의 보고가 박호문을 통해 국왕에게 닿는다.", ["E1433_0507"], ["SRC_1433_0507"], SUM, PD),
     st("지휘관 관직 제수와 노비 하사(사람을 재산으로 준 당대 제도)가 이어진다.",
-      ["E1433_0516A", "E1433_0516B"], ["SRC_1433_0516A", "SRC_1433_0516B"], SUM, PD),
+      ["E1433_0516A", "E1433_0516B"], ["SRC_1433_0516A", "SRC_1433_0516B"], SUM, PD, [
+        cl("정벌 지휘관에게 관직 제수와 노비 하사가 이어졌다.", ["E1433_0516A", "E1433_0516B"], ["SRC_1433_0516A", "SRC_1433_0516B"], "NORMALIZED", "FACTUAL"),
+        cl("노비 하사는 사람을 재산으로 준 당대 제도였다(편집자 맥락 설명).", ["E1433_0516B"], ["SRC_1433_0516B"], "INTERPRETATION", "NARRATIVE", "interpretation")]),
     st("전사·병사자 치제와 구휼·복호가 이어진다.", ["E1433_0517"], ["SRC_1433_0517"], SUM, PD)
   ]),
   scene("S07", "1433 하반기 — 반박과 명의 칙서", [
     st("지함이 알목하에서 맹가첩목아의 비판(무고한 자와 죄인을 가리지 않았다)과 친족 송환 요청을 전한다.",
       ["E1433_0610"], ["SRC_1433_0610"], SUM, PD),
     st("명 칙서는 진위를 가릴 수 없다며 당사자들에게 반환과 침범 금지를 명령한다 — 조선 유죄 판정이 아니다.",
-      ["E1433_08L10"], ["SRC_1433_08L10"], SUM, PD),
+      ["E1433_08L10"], ["SRC_1433_08L10"], SUM, PD, [
+        cl("명 칙서는 진위를 분명히 가릴 수 없다고 하고 당사자들에게 반환과 침범 금지를 명령했다.", ["E1433_08L10"], ["SRC_1433_08L10"], "DIRECT", "FACTUAL"),
+        cl("이 칙서를 '명이 조선을 유죄로 판정했다'로 읽지 않는다(pack 지침).", ["E1433_08L10"], ["SRC_1433_08L10"], "NORMALIZED", "INFERRED")]),
     st("12월 이만주 사절(왕답올·유살독 등) 기사는 v2 이관 자료다.", ["E1433_1221"], ["SRC_1433_1221"], SUM, L2)
   ]),
   scene("S08", "1434 — 범찰 첩보와 회령 재편", [
@@ -127,3 +159,5 @@ export const STORY_SCENES = [
     st("1449-07-07은 이 시각화의 작업상 종점이며, 북방 문제의 '해결' 시점이 아니다.", ["E1449_0707"], ["SRC_1449_0707"], IN, INT)
   ])
 ];
+
+export const STORY_SCENES = RAW_SCENES.map(normalizeScene);

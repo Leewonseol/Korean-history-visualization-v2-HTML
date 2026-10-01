@@ -1,16 +1,19 @@
 /* ==========================================================================
    validateData(data) — 재사용 가능한 데이터 무결성 검사
    브라우저(app.js 시작 시)와 Node CLI(tools/validate.mjs) 양쪽에서 사용한다.
-   반환: { errors: string[], warnings: string[], notices: string[], stats: object, sourceUsage }
+   반환: { errors: string[], warnings: string[], warningItems, warningReport, notices: string[], stats: object, sourceUsage }
    - errors   : 데이터가 규칙을 어김(테스트 실패)
-   - warnings : 확인이 필요한 상태(예: 검증 사료가 근거로 쓰이지 않음, 내용 미확인 사료 등록)
+   - warnings : 확인이 필요한 상태(예: 검증 사료가 근거로 쓰이지 않음, 내용 미확인 사료 등록).
+                각 경고는 {code, key}를 가지며 data/expectedWarnings.js와 대조해 expected / unexpected / stale로 나눈다.
    - notices  : 상태 안내(legacy 사료, 서지 정보만 있는 사료 등). 숨기지 않고 상태별로 알린다.
    ========================================================================== */
 import {
   LEVELS, LAYERS, CERTAINTY, CAUSAL_STATUS, THEATERS, AFFILIATIONS, ENTITY_TYPES,
   MECHANISMS, OUTCOME_TYPES, SOURCE_TYPES, SOURCE_LEVELS, DOCUMENT_TYPES, VERIFICATION,
   PROVENANCE, DERIVATION_RULES, DIRECTION_POLICY, DATE_PRECISION, TIME_KIND, COVERAGE_STATUS,
-  IDENTITY_STATUS, COORDINATE_STATUS, LOCATION_STATUS, NARRATIVE_STATUS, SOURCE_USAGE, evidenceStatusOf
+  IDENTITY_STATUS, COORDINATE_STATUS, LOCATION_STATUS, NARRATIVE_STATUS, SOURCE_USAGE, evidenceStatusOf,
+  evidenceClassOf, NORMALIZATION_RULES, RELATION_RULES, packLabelsOf, labelLayerCheck, CAUSAL_REQUIRES_EVIDENCE,
+  COVERAGE_SCOPE, EVIDENCE_CLASS
 } from "../data/vocab.js";
 import { isValidDate, isValidBound, isDayPrecise, yearOf } from "./dates.js";
 
@@ -18,7 +21,22 @@ const WHAT_TYPES = new Set(["gain", "loss", "burden", "transfer", "recover", "cl
 const PARTICIPANTS = ["actors", "targets", "beneficiaries", "victims", "decisionMakers", "informationSources", "subjects"];
 const NON_PRIMARY_OK = new Set(["secondary_only", "interpretation", "unverified_seed"]);
 const LINK_TYPES = new Set(["causal", "same_record", "same_campaign", "reference"]);
-const CAUSAL_LINK_OK = new Set(["explicit", "strongly_implied"]);
+const CAUSAL_LINK_OK = new Set(["EXPLICIT_CAUSAL"]);
+const CLAIM_TYPES = new Set(["FACTUAL", "INFERRED", "NARRATIVE"]);
+const LOCATOR = /^pack_v1:[A-Z0-9_]+:[A-Z0-9 /_()-]+:L\d+$/;
+const evidenceOk = (ev) => ev && LOCATOR.test(ev.locator || "") && typeof ev.quote === "string" && ev.quote.length > 0;
+
+/** 경고 목록을 허용 목록과 대조: expected / unexpected / stale */
+export function classifyWarnings(items, allowlist = []) {
+  const k = (x) => `${x.code}|${x.key}`;
+  const allow = new Map(allowlist.map((a) => [k(a), a]));
+  const seen = new Set(items.map(k));
+  return {
+    expected: items.filter((x) => allow.has(k(x))).map((x) => ({ ...x, reason: allow.get(k(x)).reason })),
+    unexpected: items.filter((x) => !allow.has(k(x))),
+    stale: allowlist.filter((a) => !seen.has(k(a)))
+  };
+}
 const DATE_BASES = new Set(["pack_event_date", "court_act_on_record_date", "before_record_date", "pack_event_range",
   "year_only_geography", "legacy_month", "legacy_record_date", "report_receipt_on_record_date"]);
 export const PROJECT_YEARS = Array.from({ length: 1449 - 1432 + 1 }, (_, i) => 1432 + i);
@@ -59,9 +77,11 @@ export function sourceUsage(data) {
 }
 
 export function validateData(data) {
-  const { PEOPLE, PLACES, SOURCES, EVENTS, PERSON_ATTESTATIONS = [], DISCREPANCIES = [], COVERAGE = [], STORY_SCENES = [] } = data;
-  const errors = [], warnings = [], notices = [];
-  const E = (m) => errors.push(m), W = (m) => warnings.push(m), N = (m) => notices.push(m);
+  const { PEOPLE, PLACES, SOURCES, EVENTS, PERSON_ATTESTATIONS = [], DISCREPANCIES = [], COVERAGE = [], STORY_SCENES = [],
+    RELATION_TRACES = [], EXPECTED_WARNINGS = [] } = data;
+  const errors = [], warningItems = [], notices = [];
+  const E = (m) => errors.push(m), N = (m) => notices.push(m);
+  const W = (code, key, message) => warningItems.push({ code, key, message });
 
   /* ---------- 1. ID 유일성 ---------- */
   const uniq = (arr, key, label) => {
@@ -106,10 +126,15 @@ export function validateData(data) {
     if (hasOwn(p, "hanjaVerified")) E(`${tag}: 폐기된 필드 hanjaVerified — nameFormVerified/identityStatus로 분리`);
     if (p.hanja && !(p.nameFormVerified && p.nameFormSource)) E(`${tag}: 한자 '${p.hanja}'의 근거(nameFormVerified·nameFormSource) 없음 — 편집자 한자 금지`);
     if (p.identityStatus != null && !IDENTITY_STATUS[p.identityStatus]) E(`${tag}: identityStatus '${p.identityStatus}' 미정의`);
-    if (p.entityType !== "person" && p.identityStatus !== "collective_or_office") E(`${tag}: 집단·기관은 identityStatus=collective_or_office`);
-    if (p.entityType === "person" && p.identityStatus === "collective_or_office") E(`${tag}: 개인에게 collective_or_office`);
-    if (p.identityStatus === "unresolved_homonym" && !(p.possibleSameAs || []).length) E(`${tag}: unresolved_homonym인데 possibleSameAs 없음`);
-    if (p.identityStatus === "confirmed_same_person" && !p.identityNote) E(`${tag}: confirmed_same_person 근거(identityNote) 없음`);
+    if (p.entityType !== "person" && p.identityStatus !== "COLLECTIVE_OR_OFFICE") E(`${tag}: 집단·기관은 identityStatus=COLLECTIVE_OR_OFFICE`);
+    if (p.entityType === "person" && p.identityStatus === "COLLECTIVE_OR_OFFICE") E(`${tag}: 개인에게 COLLECTIVE_OR_OFFICE`);
+    if (["UNRESOLVED_DISTINCT"].includes(p.identityStatus) && !(p.possibleSameAs || []).length) E(`${tag}: UNRESOLVED_DISTINCT인데 possibleSameAs 없음`);
+    if ((p.possibleSameAs || []).length && p.identityStatus === "VERIFIED_SAME") E(`${tag}: possibleSameAs가 있는데 VERIFIED_SAME`);
+    if (p.identityStatus === "VERIFIED_SAME" && !((p.identityEvidence || []).length && p.identityEvidence.every(evidenceOk)))
+      E(`${tag}: VERIFIED_SAME에는 identityEvidence(pack locator·quote) 필요`);
+    if (["VERIFIED_DISTINCT"].includes(p.identityStatus) && !((p.identityEvidence || []).length && p.identityEvidence.every(evidenceOk)))
+      E(`${tag}: VERIFIED_DISTINCT에는 identityEvidence 필요`);
+    if (p.identityStatus === "PROBABLE_SAME" || p.identityStatus === "SINGLE_ATTESTATION") E(`${tag}: ${p.identityStatus}는 데이터에 선언하지 않음(검증 등장 수로 계산)`);
     for (const q of p.possibleSameAs || []) {
       if (!personIds.has(q)) E(`${tag}: possibleSameAs '${q}' 없음`);
       else if (!(peopleById[q].possibleSameAs || []).includes(p.personId)) E(`${tag}: possibleSameAs '${q}'가 상호 선언되지 않음`);
@@ -131,7 +156,7 @@ export function validateData(data) {
     if (arr.length > 1 && !declaredDistinct(arr[0], arr[1])) E(`같은 한자 이름 '${h}' 을 가진 ID 여러 개(선언 없음): ${arr.map((p) => p.personId).join(", ")}`);
   }
   for (const p of PEOPLE) for (const a of p.aliases || []) {
-    if (byName[a] && !byName[a].some((q) => q.personId === p.personId)) W(`${p.personId}의 이명 '${a}'가 다른 인물의 대표명과 같음`);
+    if (byName[a] && !byName[a].some((q) => q.personId === p.personId)) W("ALIAS_COLLIDES_NAME", p.personId, `${p.personId}의 이명 '${a}'가 다른 인물의 대표명과 같음`);
   }
 
   /* ---------- 3. 장소 ---------- */
@@ -167,8 +192,8 @@ export function validateData(data) {
   const usage = sourceUsage(data);
   for (const [id, u] of Object.entries(usage)) {
     if (!SOURCE_USAGE[u.status]) E(`SOURCES ${id}: usage status '${u.status}' 미정의`);
-    if (u.status === "VERIFIED_UNUSED") W(`SOURCES ${id} [VERIFIED_UNUSED]: ${u.message}`);
-    else if (u.status === "REGISTERED_UNCHECKED") W(`SOURCES ${id} [REGISTERED_UNCHECKED]: ${u.message}`);
+    if (u.status === "VERIFIED_UNUSED") W("SOURCE_VERIFIED_UNUSED", id, `SOURCES ${id} [VERIFIED_UNUSED]: ${u.message}`);
+    else if (u.status === "REGISTERED_UNCHECKED") W("SOURCE_REGISTERED_UNCHECKED", id, `SOURCES ${id} [REGISTERED_UNCHECKED]: ${u.message}`);
     else if (u.status === "BIBLIOGRAPHIC_ONLY") N(`SOURCES ${id} [BIBLIOGRAPHIC_ONLY]: ${u.message}`);
     else if (u.status === "LEGACY") N(`SOURCES ${id} [LEGACY]: ${u.message}`);
   }
@@ -214,7 +239,7 @@ export function validateData(data) {
     if (pr === "YEAR" && !(mn && mx && /-00-00$/.test(mn) && /-99-99$/.test(mx) && mn.slice(0, 4) === mx.slice(0, 4))) E(`${tag}: YEAR 정밀도는 'YYYY-00-00'~'YYYY-99-99'`);
     if (pr === "UNKNOWN" && mn != null && mx != null) E(`${tag}: 두 경계를 모두 알면 UNKNOWN이 아님`);
     if (rd != null && !isValidDate(rd)) E(`${tag}: recordDate '${rd}' 형식 오류`);
-    if (rd != null && mn != null && mn > rd) W(`${tag}: dateMin(${mn})이 기사일(${rd})보다 뒤 — 예정 사항인지 확인`);
+    if (rd != null && mn != null && mn > rd) W("EVENT_AFTER_RECORD", ev.id, `${tag}: dateMin(${mn})이 기사일(${rd})보다 뒤 — 예정 사항인지 확인`);
     if (!DATE_BASES.has(ev.dateBasis)) E(`${tag}: dateBasis '${ev.dateBasis}' 미정의`);
     if (["court_act_on_record_date", "report_receipt_on_record_date"].includes(ev.dateBasis) && !(mn === rd && mx === rd)) E(`${tag}: court_act_on_record_date인데 날짜가 기사일과 다름`);
     if (ev.dateBasis === "before_record_date" && !(mn == null && mx === rd)) E(`${tag}: before_record_date는 dateMin=null, dateMax=기사일`);
@@ -269,9 +294,11 @@ export function validateData(data) {
       if (!LINK_TYPES.has(l.linkType)) E(`${lt}: linkType '${l.linkType}' 미정의`);
       if (!CAUSAL_STATUS[l.causalStatus]) E(`${lt}: causalStatus '${l.causalStatus}' 미정의`);
       provOk(lt, l.provenance);
-      if (l.linkType === "causal" && !CAUSAL_LINK_OK.has(l.causalStatus)) E(`${lt}: causal 링크인데 causalStatus='${l.causalStatus}' — 선후만으로 인과 금지`);
-      if (CAUSAL_LINK_OK.has(l.causalStatus) && evidenceStatusOf(l.provenance) !== "verified") E(`${lt}: 검증되지 않은(${l.provenance}) 링크에 인과 상태 '${l.causalStatus}' — legacy 인과 승격 금지`);
+      if (l.linkType === "causal" && !CAUSAL_LINK_OK.has(l.causalStatus)) E(`${lt}: causal 링크인데 causalStatus='${l.causalStatus}' — EXPLICIT_CAUSAL만 허용`);
       if (l.linkType !== "causal" && CAUSAL_LINK_OK.has(l.causalStatus)) E(`${lt}: linkType '${l.linkType}'에 인과 상태 '${l.causalStatus}'`);
+      if (l.causalStatus !== "UNKNOWN" && evidenceStatusOf(l.provenance) !== "verified") E(`${lt}: 검증되지 않은(${l.provenance}) 링크에 '${l.causalStatus}' — legacy 인과 승격 금지(UNKNOWN만)`);
+      if (CAUSAL_REQUIRES_EVIDENCE.has(l.causalStatus) && !evidenceOk(l.causalEvidence)) E(`${lt}: ${l.causalStatus}에는 causalEvidence(pack locator·quote) 필요`);
+      if (l.linkType === "reference" && !["TEMPORAL_ASSOCIATION", "UNKNOWN"].includes(l.causalStatus)) E(`${lt}: reference 링크는 TEMPORAL_ASSOCIATION/UNKNOWN만`);
       if (l.linkType === "causal") {
         const a = other.dateMax ?? other.recordDate, b = ev.dateMin ?? ev.dateMax ?? ev.recordDate;
         if (a && b && other.dateMin && other.dateMin > b) E(`${lt}: 원인 사건이 결과보다 늦음 — 시간 역행 인과`);
@@ -293,7 +320,7 @@ export function validateData(data) {
       const ok = provOk(rt, r.provenance);
       const g = evidenceStatusOf(r.provenance);
       relByGroup[ok ? g : "unknown"]++;
-      if (r.provenance === "pack_v1_derived" && !DERIVATION_RULES[r.derivationRule]) E(`${rt}: pack_v1_derived인데 derivationRule '${r.derivationRule}' 미정의`);
+      if (r.provenance === "pack_v1_derived" && !RELATION_RULES.includes(r.derivationRule)) E(`${rt}: pack_v1_derived인데 derivationRule '${r.derivationRule}'가 관계 규칙(R1~R6)이 아님 — R7은 시각 규칙`);
       if (r.provenance !== "pack_v1_derived" && r.derivationRule) E(`${rt}: derivationRule은 pack_v1_derived에만`);
       if (g === "verified" && evGroup !== "verified") E(`${rt}: legacy/해석 사건 안에 pack 관계 — 근거 계보 불일치`);
       const cert = r.certainty || "confirmed";
@@ -301,9 +328,11 @@ export function validateData(data) {
       if (r.provenance === "interpretation" && cert !== "interpretation") E(`${rt}: provenance=interpretation인데 certainty='${cert}'`);
       if (cert === "interpretation" && r.provenance !== "interpretation") E(`${rt}: certainty=interpretation인데 provenance='${r.provenance}'`);
       // 인과
-      if (!hasOwn(r, "causalStatus") || r.causalStatus == null) E(`${rt}: causalStatus 없음(기본값 explicit 금지)`);
+      if (!hasOwn(r, "causalStatus") || r.causalStatus == null) E(`${rt}: causalStatus 없음(자동 채움 금지)`);
       else if (!CAUSAL_STATUS[r.causalStatus]) E(`${rt}: causalStatus '${r.causalStatus}' 미정의`);
-      if (r.causalStatus === "explicit" && g !== "verified") E(`${rt}: 검증되지 않은 관계에 causalStatus=explicit`);
+      if (r.causalStatus && r.causalStatus !== "UNKNOWN" && g !== "verified") E(`${rt}: 검증되지 않은 관계에 causalStatus=${r.causalStatus}(UNKNOWN만)`);
+      if (CAUSAL_REQUIRES_EVIDENCE.has(r.causalStatus) && !evidenceOk(r.causalEvidence)) E(`${rt}: ${r.causalStatus}에는 causalEvidence(pack locator·quote) 필요`);
+      if (r.causalStatus === "COMMAND_RELATION" && r.layer !== "COMMAND") E(`${rt}: COMMAND_RELATION은 COMMAND layer에만`);
       // 방향 정책
       const dir = r.direction || "directed";
       if (!["directed", "undirected"].includes(dir)) E(`${rt}: direction '${dir}' 오류`);
@@ -331,6 +360,42 @@ export function validateData(data) {
     });
   }
 
+  /* ---------- 6b. 원문 추적(trace): DIRECT·NORMALIZED 관계마다 원문 줄 → 규칙 → edge ---------- */
+  const traceById = new Map();
+  for (const t of RELATION_TRACES) {
+    if (traceById.has(t.relationId)) E(`TRACE ${t.relationId}: 중복`);
+    traceById.set(t.relationId, t);
+  }
+  const ruleUse = {};
+  for (const ev of EVENTS) (ev.relations || []).forEach((r, i) => {
+    const id = `${ev.id}#${i}`, cls = evidenceClassOf(r.provenance), t = traceById.get(id);
+    if (cls !== "DIRECT" && cls !== "NORMALIZED") { if (t) E(`TRACE ${id}: ${cls} 관계에 pack trace — 근거 등급 불일치`); return; }
+    if (!t) return E(`TRACE ${id}: ${cls} 관계인데 원문 추적(trace) 없음`);
+    if (t.normalizedSubject !== r.source || t.normalizedObject !== r.target) E(`TRACE ${id}: trace의 정규화 주체/객체(${t.normalizedSubject}→${t.normalizedObject})가 관계(${r.source}→${r.target})와 다름 — 인덱스 어긋남 의심`);
+    if (!LOCATOR.test(t.locator || "") || !t.quote) E(`TRACE ${id}: locator/quote 형식 오류`);
+    if (!t.sourceId || !(ev.sourceIds || []).includes(t.sourceId) || !isPack(t.sourceId)) E(`TRACE ${id}: sourceId '${t.sourceId}'가 이 사건의 pack 사료가 아님`);
+    if (!t.sourceSubject || !t.sourceObject) E(`TRACE ${id}: 원문 주체/객체(sourceSubject/sourceObject) 없음`);
+    (t.rules || []).forEach((x) => NORMALIZATION_RULES[x] || E(`TRACE ${id}: 규칙 '${x}' 미정의`));
+    if (cls === "DIRECT" && (t.rules || []).length) E(`TRACE ${id}: DIRECT인데 규칙 ${t.rules.join("+")} 적용 — NORMALIZED여야 함`);
+    if (cls === "NORMALIZED" && !(t.rules || []).length) E(`TRACE ${id}: NORMALIZED인데 적용 규칙 없음`);
+    if (cls === "NORMALIZED" && !(t.rules || []).includes(r.derivationRule)) E(`TRACE ${id}: derivationRule '${r.derivationRule}'가 trace 규칙(${(t.rules || []).join("+")})에 없음`);
+    if (cls === "DIRECT" && !/:RELATIONS:L/.test(t.locator)) E(`TRACE ${id}: DIRECT는 pack RELATIONS 줄이어야 함`);
+    if ((t.subjectRule && !(t.rules || []).includes(t.subjectRule)) || (t.objectRule && !(t.rules || []).includes(t.objectRule))) E(`TRACE ${id}: 주체/객체 규칙이 rules에 없음`);
+    if ((t.rules || []).includes("R3_who_expansion") && !(t.members || []).length) E(`TRACE ${id}: R3인데 구성원 근거(members) 없음`);
+    [...(t.members || []), ...(t.support || [])].forEach((m) => evidenceOk(m) || E(`TRACE ${id}: members/support locator 형식 오류`));
+    if (/:RELATIONS:L/.test(t.locator)) {
+      const chk = labelLayerCheck(packLabelsOf(t.quote), r.layer);
+      if (!chk.ok) E(`TRACE ${id}: layer ${r.layer}가 pack 라벨(${packLabelsOf(t.quote).join("/")})의 허용 layer(${chk.allowed.join(",")})에 없음`);
+      else if (!chk.oneToOne && !(t.rules || []).includes("R6_layer_normalize")) E(`TRACE ${id}: 라벨→layer가 일대일이 아닌데 R6 미표시`);
+      else if (chk.oneToOne && (t.rules || []).includes("R6_layer_normalize")) E(`TRACE ${id}: 일대일 라벨인데 R6 표시`);
+    }
+    for (const x of t.rules || []) ruleUse[x] = (ruleUse[x] || 0) + 1;
+  });
+  for (const id of traceById.keys()) {
+    const [evId, i] = id.split("#");
+    if (!eventsById[evId] || !(eventsById[evId].relations || [])[+i]) E(`TRACE ${id}: 해당 관계 없음`);
+  }
+
   /* ---------- 7. 불일치 기록 ---------- */
   for (const d of DISCREPANCIES) {
     (d.eventIds || []).forEach((e) => eventIds.has(e) || E(`DISCREPANCY ${d.id}: eventId '${e}' 없음`));
@@ -344,6 +409,10 @@ export function validateData(data) {
     if (covYears.has(c.year)) E(`${tag}: 중복`);
     covYears.set(c.year, c);
     if (!COVERAGE_STATUS[c.coverageStatus]) E(`${tag}: coverageStatus '${c.coverageStatus}' 미정의`);
+    if (!COVERAGE_SCOPE[c.scopeStatus]) E(`${tag}: scopeStatus '${c.scopeStatus}' 미정의(FULL/PARTIAL/NONE/UNKNOWN)`);
+    if ((c.scopeStatus === "NONE") !== (c.coverageStatus === "NOT_COVERED")) E(`${tag}: scopeStatus NONE ⇔ NOT_COVERED 불일치`);
+    if (c.scopeStatus === "PARTIAL" && !(c.scopeFrom > `${c.year}-01-01` || c.scopeTo < `${c.year}-12-30`)) E(`${tag}: PARTIAL인데 scopeFrom/scopeTo가 연도 전체`);
+    if (c.scopeStatus === "FULL" && (c.scopeFrom !== `${c.year}-01-01` || c.scopeTo !== `${c.year}-12-30`)) E(`${tag}: FULL인데 범위가 연도 일부`);
     (c.sourceIds || []).forEach((s) => {
       if (!isPack(s)) E(`${tag}: sourceId ${s}가 pack v1 사료가 아님`);
       else if (sourcesById[s].date && yearOf(sourcesById[s].date) !== c.year) E(`${tag}: sourceId ${s}의 연도가 다름`);
@@ -392,6 +461,23 @@ export function validateData(data) {
         else if (!allowed.has(s)) E(`${t}: sourceId '${s}'가 문장의 사건 근거가 아님`);
         if (evidenceStatusOf(st.provenance) === "verified" && !isPack(s)) E(`${t}: pack 문장이 pack 아닌 사료 ${s}를 인용`);
       });
+      // claim 단위 근거
+      if (!(st.claims || []).length) E(`${t}: claims 없음(normalizeScene 미적용)`);
+      (st.claims || []).forEach((c, j) => {
+        const ct = `${t} claim#${j}`;
+        if (!c.text) E(`${ct}: text 없음`);
+        if (!EVIDENCE_CLASS[c.evidenceClass]) E(`${ct}: evidenceClass '${c.evidenceClass}' 미정의`);
+        if (!CLAIM_TYPES.has(c.claimType)) E(`${ct}: claimType '${c.claimType}' 미정의(FACTUAL/INFERRED/NARRATIVE)`);
+        if (!CERTAINTY[c.certainty]) E(`${ct}: certainty '${c.certainty}' 미정의`);
+        if (c.claimType === "NARRATIVE" && c.evidenceClass !== "INTERPRETATION") E(`${ct}: NARRATIVE claim은 INTERPRETATION`);
+        if (c.claimType === "INFERRED" && !["NORMALIZED", "INTERPRETATION"].includes(c.evidenceClass)) E(`${ct}: INFERRED claim은 NORMALIZED 또는 INTERPRETATION`);
+        if (c.evidenceClass === "INTERPRETATION" && c.certainty !== "interpretation") E(`${ct}: 해석 claim의 certainty는 interpretation`);
+        if (!(c.eventIds || []).length || !(c.sourceIds || []).length) E(`${ct}: eventIds/sourceIds 없음`);
+        (c.eventIds || []).forEach((e) => (st.eventIds || []).includes(e) || E(`${ct}: eventId '${e}'가 문장 근거 밖`));
+        (c.sourceIds || []).forEach((x) => (st.sourceIds || []).includes(x) || E(`${ct}: sourceId '${x}'가 문장 근거 밖`));
+        if (["DIRECT", "NORMALIZED"].includes(c.evidenceClass) && (c.eventIds || []).some((e) => eventsById[e] && evidenceStatusOf(eventsById[e].provenance) !== "verified")) E(`${ct}: 검증 claim이 legacy 사건 인용`);
+        if (c.evidenceClass === "LEGACY" && evidenceClassOf(st.provenance) === "DIRECT") E(`${ct}: legacy claim이 직접 근거 문장 안에 있음`);
+      });
     });
   }
 
@@ -402,16 +488,22 @@ export function validateData(data) {
     (ev.relations || []).forEach((r) => { usedP.add(r.source); usedP.add(r.target); });
     (ev.placeIds || []).forEach((p) => usedPl.add(p));
   }
-  PEOPLE.forEach((p) => usedP.has(p.personId) || W(`PEOPLE ${p.personId}: 어떤 사건에도 등장하지 않음`));
-  PLACES.forEach((p) => usedPl.has(p.placeId) || PLACES.some((q) => q.parentPlaceId === p.placeId) || W(`PLACES ${p.placeId}: 사용되지 않음`));
+  PEOPLE.forEach((p) => usedP.has(p.personId) || W("PERSON_UNUSED", p.personId, `PEOPLE ${p.personId}: 어떤 사건에도 등장하지 않음`));
+  PLACES.forEach((p) => usedPl.has(p.placeId) || PLACES.some((q) => q.parentPlaceId === p.placeId) || W("PLACE_UNUSED", p.placeId, `PLACES ${p.placeId}: 사용되지 않음`));
 
+  const warnings = warningItems.map((w) => w.message);
+  const warningReport = classifyWarnings(warningItems, EXPECTED_WARNINGS);
+  const relClass = { DIRECT: 0, NORMALIZED: 0, LEGACY: 0, INTERPRETATION: 0, UNKNOWN: 0 };
+  EVENTS.forEach((ev) => (ev.relations || []).forEach((r) => relClass[evidenceClassOf(r.provenance)]++));
   return {
-    errors, warnings, notices, sourceUsage: usage,
+    errors, warnings, warningItems, warningReport, notices, sourceUsage: usage, ruleUse,
     stats: {
       people: PEOPLE.length, places: PLACES.length, sources: SOURCES.length, events: EVENTS.length,
       relations: relCount, relationsVerified: relByGroup.verified, relationsLegacy: relByGroup.legacy,
       relationsInterpretation: relByGroup.interpretation, relationsUnknown: relByGroup.unknown,
-      relationsWithoutSource: sourceless, attestations: PERSON_ATTESTATIONS.length, coverageYears: COVERAGE.length
+      relationsDirect: relClass.DIRECT, relationsNormalized: relClass.NORMALIZED,
+      relationsWithoutSource: sourceless, relationsWithTrace: RELATION_TRACES.length,
+      attestations: PERSON_ATTESTATIONS.length, coverageYears: COVERAGE.length
     }
   };
 }

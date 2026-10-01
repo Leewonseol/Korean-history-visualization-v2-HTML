@@ -5,5 +5,7 @@ import { SOURCES } from "./sources.js";
 import { EVENTS, DISCREPANCIES } from "./events.js";
 import { COVERAGE } from "./coverage.js";
 import { STORY_SCENES } from "./story.js";
+import { RELATION_TRACES } from "./relationTraces.js";
+import { EXPECTED_WARNINGS } from "./expectedWarnings.js";
 
-export const DATA = { PEOPLE, PERSON_ATTESTATIONS, PLACES, SOURCES, EVENTS, DISCREPANCIES, COVERAGE, STORY_SCENES };
+export const DATA = { PEOPLE, PERSON_ATTESTATIONS, PLACES, SOURCES, EVENTS, DISCREPANCIES, COVERAGE, STORY_SCENES, RELATION_TRACES, EXPECTED_WARNINGS };

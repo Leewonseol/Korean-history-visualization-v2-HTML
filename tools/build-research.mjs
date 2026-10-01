@@ -10,7 +10,9 @@ import { DATA } from "../src/data/index.js";
 import { generateResearch } from "./research-gen.mjs";
 
 const gen = generateResearch(DATA);
+for (const [file, content] of Object.entries(gen.__files || {})) fs.writeFileSync(new URL(`../research/${file}`, import.meta.url), content);
 for (const [file, sections] of Object.entries(gen)) {
+  if (file === "__files") continue;
   const path = new URL(`../research/${file}`, import.meta.url);
   let src = fs.readFileSync(path, "utf8");
   for (const [name, body] of Object.entries(sections)) {
@@ -20,5 +22,5 @@ for (const [file, sections] of Object.entries(gen)) {
   }
   fs.writeFileSync(path, src);
 }
-for (const c of DATA.COVERAGE) console.log(`${c.year}  ${c.coverageStatus.padEnd(22)} sources ${c.sourceIds.length}${c.coverageStatus === "NOT_COVERED" ? "  — " + c.note : ""}`);
+for (const c of DATA.COVERAGE) console.log(`${c.year}  ${c.coverageStatus.padEnd(22)} scope ${c.scopeStatus.padEnd(8)} sources ${c.sourceIds.length}${c.scopeStatus === "PARTIAL" ? `  — 부분 조사(${c.scope}): 다른 연도와 단순 비교 금지` : ""}${c.coverageStatus === "NOT_COVERED" ? "  — " + c.note : ""}`);
 console.log("research tables regenerated");

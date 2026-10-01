@@ -10,9 +10,10 @@
      startDate/endDate : 화면 표시용 범위(미상 경계는 anchor로 대체). 분석은 tMin/tMax만 사용.
    근거:
      provenance, evidenceStatus(verified/legacy/interpretation/unknown), derivationRule, certainty, causalStatus
-     causalStatus 기본값은 'unknown' — 여기서 'explicit'을 채워 넣지 않는다.
+     causalStatus 기본값은 'UNKNOWN' — 여기서 인과 상태를 채워 넣지 않는다.
+     evidenceClass(DIRECT / NORMALIZED / LEGACY / INTERPRETATION): 근거 필터는 model/evidence.js만 사용
    ========================================================================== */
-import { evidenceStatusOf } from "../data/vocab.js";
+import { evidenceStatusOf, evidenceClassOf } from "../data/vocab.js";
 import { isDayPrecise } from "./dates.js";
 
 export function deriveContacts(events, sourcesById) {
@@ -44,6 +45,8 @@ export function deriveContacts(events, sourcesById) {
         causalStatus: rel.causalStatus ?? null,
         provenance,
         evidenceStatus: evidenceStatusOf(provenance),
+        evidenceClass: evidenceClassOf(provenance),
+        causalEvidence: rel.causalEvidence || null,
         derivationRule: rel.derivationRule || null,
         pathEligible: rel.pathEligible !== false,
         sourceIds,

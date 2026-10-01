@@ -1,4 +1,7 @@
-# 데이터 감사 — 수정 후 보고 (audit_post_fix)
+# 데이터 감사 — 수정 후 보고 (audit_post_fix, 1차)
+
+> **2차 감사(`research/audit_round2.md`)에서 근거 등급 분류를 더 엄격히 바꿨다.** 아래 수치는 1차 감사 직후 기록이다.
+> 현재 수치는 `research/methodology.md` §10(자동 생성)과 2차 감사 문서를 볼 것.
 
 - 기준: `research/audit_pre_fix.md`(수정 전, 커밋 `b4f1ceb`)의 심각도 분류와 파일별 계획
 - ground truth: 사용자 제공 VALIDATED HISTORICAL SOURCE PACK v1만 사용. 외부 사료 사이트는 접근 불가였고, 일반지식으로 보충하지 않았다.
@@ -11,14 +14,14 @@
 | 항목 | 값 |
 |---|---|
 | EVENT | 70 — pack v1 검증 54 (직접 53 · 정규화 1) · legacy 16 (v2 이관 15 · anchor 시드 1) |
-| RELATION | 242 — **pack v1 검증 175** (직접 53 · 정규화 122) · **legacy 47** (v2 46 · 시드 1) · **해석 20** · 출처 불명 0 |
-| **사료 없는 relation** | **0** |
-| causalStatus | 242/242 기록 — explicit 20 (모두 pack 근거) · unknown 222. 기본값 `explicit` 채움 제거 |
+| RELATION | 242 — 직접 사료 근거 53 · 규칙 파생 122 · legacy 47 (v2 46 · 시드 1) · 해석 20 (1차 분류) |
+| 사료 id 누락 relation(형식 검사) | 0 — 직접 입증 수가 아님. 등급별 수(위 줄)와 함께만 읽을 것 |
+| causalStatus | 242/242 기록 — explicit 20 (모두 pack 근거) · unknown 222. 기본값 `explicit` 채움 제거 (2차: EXPLICIT_CAUSAL + 원문 근거로 재정의) |
 | 사건 연결(eventLinks, 구 causedBy) | 26 → 12. 인과(causal) 4건만 남김(모두 pack 정규화 근거) · 언급(reference) 5건(legacy 인과 4건 강등 포함) · 같은 기사/같은 작전 3 |
 | undirected | 13 (모두 `E1432_1221`, pack "세종 <-> 대신들", `directionEvidence` 기록) |
 | 경로 제외(`pathEligible: false`) | 6 ('~에 관한' 관계: 반박 주장의 지목 대상, 조건부 표적 기준 등) |
 | 관계 시각 | 일 단위 확정 188 · 범위/미상 54 (그중 하한 미상 = '기사일 이전' 42) |
-| 기본 지표 입력(strict, 1432~1449 전체 창) | 133 contact · 시각 불확실 제외 39 · '~에 관한' 제외 3 |
+| 기본 지표 입력(CERTAIN_ORDER, 1432~1449 전체 창) | 133 contact · 시각 불확실 제외 39 · '~에 관한' 제외 3 |
 | 관직·역할 증언 | 32 (pack 24 · legacy 8). 구간·종료일 역산 0 |
 | PLACE parentPlaceId | 20 → 3 (모두 pack 근거 `parentBasis`) |
 | 편집자 한자 | 인물 15 + 장소 23 → 0 |

@@ -10,6 +10,14 @@ import { DATA } from "../src/data/index.js";
 import { validateData, sourceUsage, PROJECT_YEARS } from "../src/model/validate.js";
 import { buildIndexes } from "../src/model/indexes.js";
 import { filterContacts, analysisContacts } from "../src/model/temporalNetwork.js";
+import { evidenceScope, DEFAULT_SCOPE, assertScope, countByClass } from "../src/model/evidence.js";
+import { computeMetrics } from "../src/analysis/centrality.js";
+import { temporalPath, feedbackLoops } from "../src/analysis/temporalPaths.js";
+import { yearlyTrajectories } from "../src/analysis/trajectories.js";
+import { missingnessReport } from "../src/analysis/missingness.js";
+import { mergeSensitivity, pathIdentityAssumptions } from "../src/analysis/identitySensitivity.js";
+import { NORMALIZATION_RULES, packLabelsOf, labelLayerCheck, evidenceClassOf } from "../src/data/vocab.js";
+import { loadPack, resolveLocator } from "./pack-v1.mjs";
 import { PROVENANCE, DERIVATION_RULES, DIRECTION_POLICY, CAUSAL_STATUS, evidenceStatusOf, NARRATIVE_STATUS } from "../src/data/vocab.js";
 import { isDayPrecise, yearOf } from "../src/model/dates.js";
 import { generateResearch } from "./research-gen.mjs";
@@ -58,15 +66,21 @@ test("H1 모든 관계: sourceIds·evidenceStatus·provenance·certainty·causal
   const bad = idx.contacts.filter((c) => !c.sourceIds.length || !c.evidenceStatus || c.evidenceStatus === "unknown" || !c.provenance || !c.certainty || !CAUSAL_STATUS[c.causalStatus]);
   fail(bad.map((c) => c.id), "근거 필드 누락");
 });
-test("H2 시간 선후를 인과로 바꾸지 않음: explicit은 검증 관계만, causal 링크는 explicit/strongly_implied만, causedBy 폐기", () => {
+test("H2 시간 선후를 인과로 바꾸지 않음: EXPLICIT_CAUSAL·PROCEDURAL_SEQUENCE는 검증 근거+원문 근거 필요, causal 링크는 EXPLICIT_CAUSAL만, causedBy 폐기", () => {
   const bad = [];
-  idx.contacts.forEach((c) => c.causalStatus === "explicit" && c.evidenceStatus !== "verified" && bad.push(c.id));
+  idx.contacts.forEach((c) => {
+    if (c.causalStatus !== "UNKNOWN" && c.evidenceStatus !== "verified") bad.push(`${c.id}(비검증 ${c.causalStatus})`);
+    if (["EXPLICIT_CAUSAL", "PROCEDURAL_SEQUENCE"].includes(c.causalStatus) && !c.causalEvidence) bad.push(`${c.id}(근거 없음)`);
+    if (c.layer === "COMMAND" && c.causalStatus === "EXPLICIT_CAUSAL") bad.push(`${c.id}(명령 관계를 인과로)`);
+  });
   DATA.EVENTS.forEach((e) => {
     if ("causedBy" in e) bad.push(`${e.id}.causedBy`);
     (e.eventLinks || []).forEach((l) => {
-      if (l.linkType === "causal" && !["explicit", "strongly_implied"].includes(l.causalStatus)) bad.push(`${e.id}->${l.eventId}`);
-      if (l.linkType !== "causal" && ["explicit", "strongly_implied"].includes(l.causalStatus)) bad.push(`${e.id}->${l.eventId}`);
-      if (["explicit", "strongly_implied"].includes(l.causalStatus) && evidenceStatusOf(l.provenance) !== "verified") bad.push(`${e.id}->${l.eventId}(legacy 인과)`);
+      const t = `${e.id}->${l.eventId}`;
+      if (l.linkType === "causal" && l.causalStatus !== "EXPLICIT_CAUSAL") bad.push(t);
+      if (l.linkType !== "causal" && l.causalStatus === "EXPLICIT_CAUSAL") bad.push(t);
+      if (l.causalStatus !== "UNKNOWN" && evidenceStatusOf(l.provenance) !== "verified") bad.push(`${t}(legacy 인과)`);
+      if (["EXPLICIT_CAUSAL", "PROCEDURAL_SEQUENCE"].includes(l.causalStatus) && !l.causalEvidence) bad.push(`${t}(근거 없음)`);
     });
   });
   fail(bad, "선후→인과");
@@ -96,9 +110,9 @@ test("C2 '기사일 이전' 사건: 현장 행위를 기사일로 확정하지 �
     !(COURT.has(c.target) && ["REPORT", "DIPLOMACY"].includes(c.layer) && c.tMin === idx.eventsById[c.eventId].recordDate));
   fail(bad.map((c) => c.id), "현장 행위에 기사일 정밀도");
 });
-test("C3 기본 분석 데이터셋은 시각이 확정된(strict) 검증 관계만 — 연·월·미상 관계에 순서를 매기지 않음", () => {
-  const a = analysisContacts(idx, W, "strict");
-  fail(a.contacts.filter((c) => c.tMin === null || c.tMax === null || c.evidenceStatus !== "verified" || !c.pathEligible).map((c) => c.id), "strict 입력 위반");
+test("C3 기본 분석 데이터셋은 시각이 확정된(CERTAIN_ORDER) DIRECT+NORMALIZED 관계만 — 연·월·미상 관계에 순서를 매기지 않음", () => {
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
+  fail(a.contacts.filter((c) => c.tMin === null || c.tMax === null || !["DIRECT", "NORMALIZED"].includes(c.evidenceClass) || !c.pathEligible).map((c) => c.id), "CERTAIN_ORDER 입력 위반");
 });
 
 /* ---------- D. coverage ---------- */
@@ -172,7 +186,7 @@ test("F1 이름 표기 근거와 동일성 분리: 한자는 pack 인명록 표�
 test("F2 동명이인 미해결 노드는 자동 병합되지 않음(홍사석 1437 · 김효성 1443 · 이진 1437)", () => {
   const pairs = [["JO_HONGSASEOK", "JO_HONGSASEOK_1437", "1437"], ["JO_KIMHYOSEONG", "JO_KIMHYOSEONG_1443", "1443"], ["JO_LEEJIN", "JO_LEEJIN_1437", "1437"]];
   for (const [base, split, year] of pairs) {
-    assert.equal(idx.identityOf[split].status, "unresolved_homonym", split);
+    assert.equal(idx.identityOf[split].status, "UNRESOLVED_DISTINCT", split);
     assert.ok(idx.peopleById[base].possibleSameAs.includes(split) && idx.peopleById[split].possibleSameAs.includes(base), `${base}↔${split} 상호 선언`);
     const appear = (p) => [...(idx.eventsByPerson[p] || []), ...(idx.mentionsByPerson[p] || [])];   // 참여 + 언급
     const baseYears = appear(base).map((e) => idx.sortDateOf(idx.eventsById[e]).slice(0, 4));
@@ -189,10 +203,10 @@ test("F3 자동 병합 시도를 검증기가 거부: 같은 이름 노드를 �
   assert.ok(validateData(bad).errors.some((e) => e.includes("중복 의심") && e.includes("JO_HONGSASEOK_1437")));
   const bad2 = structuredClone(DATA);
   bad2.PEOPLE.find((x) => x.personId === "JO_KIMHYOSEONG_1443").possibleSameAs = [];
-  assert.ok(validateData(bad2).errors.some((e) => e.includes("unresolved_homonym인데 possibleSameAs 없음") || e.includes("상호 선언")));
+  assert.ok(validateData(bad2).errors.some((e) => e.includes("UNRESOLVED_DISTINCT인데 possibleSameAs 없음") || e.includes("상호 선언")));
 });
-test("F4 동일성 상태: 모든 노드에 identityStatus(선언 또는 계산), 집단·기관은 collective_or_office", () => {
-  const bad = DATA.PEOPLE.filter((p) => !idx.identityOf[p.personId] || (p.entityType !== "person" && idx.identityOf[p.personId].status !== "collective_or_office"));
+test("F4 동일성 상태: 모든 노드에 identityStatus(선언 또는 계산), 집단·기관은 COLLECTIVE_OR_OFFICE", () => {
+  const bad = DATA.PEOPLE.filter((p) => !idx.identityOf[p.personId] || (p.entityType !== "person" && idx.identityOf[p.personId].status !== "COLLECTIVE_OR_OFFICE"));
   fail(bad.map((p) => p.personId), "identityStatus");
 });
 
@@ -254,6 +268,165 @@ test("K5 관직·역할은 증언(attestation)으로만 — 종료일 역산 없
 });
 test("K6 주인공을 데이터·알고리즘으로 지정하지 않음", () => {
   fail(DATA.PEOPLE.filter((p) => ["protagonist", "isMain", "rank", "importance"].some((k) => k in p)).map((p) => p.personId), "주인공 필드");
+});
+
+/* ---------- T. 원문 추적(trace) — 정규화 관계 감사 가능성 ---------- */
+const pack = loadPack();
+const quoteOk = (ev) => ev && resolveLocator(pack, ev.locator) === ev.quote;
+test("T1 모든 trace·구성원·보조 근거·인과 근거·동일성 근거의 quote가 pack 원문 해당 줄과 글자 그대로 일치", () => {
+  const bad = [];
+  for (const t of DATA.RELATION_TRACES) {
+    if (!quoteOk(t)) bad.push(`${t.relationId}:${t.locator}`);
+    [...t.members, ...t.support].forEach((m) => quoteOk(m) || bad.push(`${t.relationId}:${m.locator}`));
+  }
+  for (const c of idx.contacts) if (c.causalEvidence && !quoteOk(c.causalEvidence)) bad.push(`${c.id}:causal`);
+  DATA.EVENTS.forEach((e) => (e.eventLinks || []).forEach((l) => l.causalEvidence && !quoteOk(l.causalEvidence) && bad.push(`${e.id}->${l.eventId}:causal`)));
+  DATA.PEOPLE.forEach((p) => (p.identityEvidence || []).forEach((x) => quoteOk(x) || bad.push(`${p.personId}:identity`)));
+  fail(bad, "원문과 다른 quote");
+});
+test("T2 DIRECT·NORMALIZED 관계는 모두 trace가 있고, 등급이 trace의 규칙 유무와 일치(DIRECT = 규칙 없음)", () => {
+  const tr = new Map(DATA.RELATION_TRACES.map((t) => [t.relationId, t]));
+  const bad = [];
+  rels.forEach(({ r, id }) => {
+    const cls = evidenceClassOf(r.provenance);
+    if (cls !== "DIRECT" && cls !== "NORMALIZED") return;
+    const t = tr.get(id);
+    if (!t) return bad.push(`${id}(trace 없음)`);
+    if ((cls === "DIRECT") !== (t.rules.length === 0)) bad.push(`${id}(${cls} vs rules ${t.rules.join("+")})`);
+    if (t.normalizedSubject !== r.source || t.normalizedObject !== r.target) bad.push(`${id}(endpoint)`);
+  });
+  fail(bad, "trace 불일치");
+});
+test("T3 R6: pack 라벨→layer 표 — 일대일이면 R6 없음, 일대일이 아니면 R6 필수, 표 밖 layer 금지", () => {
+  const bad = [];
+  for (const t of DATA.RELATION_TRACES) {
+    if (!/:RELATIONS:L/.test(t.locator)) continue;
+    const r = rels.find((x) => x.id === t.relationId).r;
+    const chk = labelLayerCheck(packLabelsOf(t.quote), r.layer);
+    if (!chk.ok || chk.oneToOne === t.rules.includes("R6_layer_normalize")) bad.push(`${t.relationId}(${r.layer} / ${packLabelsOf(t.quote).join("/")})`);
+  }
+  fail(bad, "R6 위반");
+});
+test("T4 규칙 formal spec 준수: R1 금지 사례(정치체 '조선/Joseon/state' → 세종, 주체 'court' → 세종) 없음, R2는 'via', R3는 구성원 근거, R7은 관계 규칙으로 쓰지 않음", () => {
+  const bad = [];
+  for (const t of DATA.RELATION_TRACES) {
+    if (t.normalizedObject === "JO_SEJONG" && /^(조선|Joseon|state)$/.test(t.sourceObject)) bad.push(`${t.relationId}(정치체→세종)`);
+    if (t.normalizedSubject === "JO_SEJONG" && /^(court|central|state|Joseon|조선|central government)$/.test(t.sourceSubject)) bad.push(`${t.relationId}(주체 court→세종)`);
+    if (t.objectRule === "R1_court_recipient" && !/court|central|Ming|미기재/.test(t.sourceObject)) bad.push(`${t.relationId}(R1 입력 패턴 밖: ${t.sourceObject})`);
+    if (t.rules.includes("R2_carrier_split") && !/via/.test(t.quote)) bad.push(`${t.relationId}(R2 'via' 없음)`);
+    if (t.rules.includes("R3_who_expansion") && !t.members.length) bad.push(`${t.relationId}(R3 구성원 근거 없음)`);
+    if (t.rules.includes("R7_report_on_record")) bad.push(`${t.relationId}(R7은 시각 규칙)`);
+    t.rules.forEach((x) => NORMALIZATION_RULES[x] || bad.push(`${t.relationId}(규칙 ${x})`));
+  }
+  fail(bad, "규칙 spec 위반");
+});
+test("T5 인물 한자는 pack 원문(인명록)에 '이름 한자' 형태로 실제로 존재", () => {
+  fail(DATA.PEOPLE.filter((p) => p.hanja && !pack.text.includes(p.hanja)).map((p) => p.personId), "pack에 없는 한자");
+});
+
+/* ---------- EV. 근거 선택기 단일 소스 ---------- */
+test("EV1 근거 필터 로직은 model/evidence.js에만 — UI·분석·연구 생성기에 자체 필터 없음", () => {
+  const files = ["src/app.js", ...fs.readdirSync("src/ui").map((f) => `src/ui/${f}`), ...fs.readdirSync("src/analysis").map((f) => `src/analysis/${f}`),
+    "src/model/temporalNetwork.js", "tools/research-gen.mjs"];
+  const bad = [];
+  for (const f of files) fs.readFileSync(f, "utf8").split("\n").forEach((line, i) => {
+    if (/evidenceAllowed|\.evidenceStatus\s*===|evidenceStatusOf\(|provenance\s*===\s*"(inherited_v2|interpretation|pack_v1_direct|pack_v1_derived)"/.test(line)) bad.push(`${f}:${i + 1}`);
+  });
+  fail(bad, "중복 근거 필터");
+});
+test("EV2 INTERPRETATION은 기본 분석 경로에서 assert로 차단, 명시적 interpretation mode에서만 허용", () => {
+  const withInterp = filterContacts(idx, { ...W, includeInterpretation: true, mode: "CERTAIN_ORDER", pathOnly: true });
+  assert.ok(withInterp.some((c) => c.evidenceClass === "INTERPRETATION"), "해석 관계가 있어야 검사 가능");
+  assert.throws(() => computeMetrics(withInterp, W), /interpretation mode/);
+  assert.throws(() => temporalPath(withInterp, ["JO_SEJONG"], "JO_LEESUNMONG", W.from, W.to), /interpretation mode/);
+  assert.throws(() => feedbackLoops(withInterp, "JO_SEJONG", W.from, W.to), /interpretation mode/);
+  assert.throws(() => assertScope(withInterp, DEFAULT_SCOPE), /interpretation mode/);
+  const scope = evidenceScope({ includeInterpretation: true });
+  assert.doesNotThrow(() => computeMetrics(withInterp, W, { scope }));
+  const legacy = filterContacts(idx, { ...W, includeLegacy: true, mode: "CERTAIN_ORDER", pathOnly: true });
+  assert.throws(() => computeMetrics(legacy, W), /legacy/);
+});
+test("EV3 토글 OFF면 경로·지표·연도 집계·연구 문서 어디에도 legacy·해석이 들어가지 않음", () => {
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
+  const c = countByClass(a.contacts);
+  assert.equal(c.LEGACY + c.INTERPRETATION + c.UNKNOWN, 0);
+  const traj = yearlyTrajectories(idx, W, ["JO_SEJONG"]);
+  assert.ok(traj.years.length > 0);
+  const gen = generateResearch(DATA);
+  assert.ok(gen["methodology.md"].STATS.includes("기본 지표 입력"), "연구 문서가 기본 입력 근거를 밝혀야 함");
+});
+
+/* ---------- MS. missingness ---------- */
+test("MS1 missingness 보고: 포함+제외가 화면 관계 수와 맞고, 등급·layer·인물별 분포가 계산됨", () => {
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
+  const m = missingnessReport(a);
+  assert.equal(m.included + m.excludedUncertain + m.excludedAbout, a.shown.length);
+  const sum = (rows, k) => rows.reduce((x, r) => x + r[k], 0);
+  for (const dim of ["byLayer", "byEvidenceClass", "byRelationType", "byTimeShape"]) {
+    assert.equal(sum(m[dim], "included"), m.included, dim);
+    assert.equal(sum(m[dim], "excluded"), m.excludedUncertain, dim);
+  }
+});
+
+/* ---------- ID. 동일성 ---------- */
+test("ID1 VERIFIED_SAME은 pack 근거가 있는 인물(세종·이천)뿐, 다른 다중 등장 인물은 PROBABLE_SAME(미해결)", () => {
+  const vs = DATA.PEOPLE.filter((p) => idx.identityOf[p.personId].status === "VERIFIED_SAME").map((p) => p.personId).sort();
+  assert.deepEqual(vs, ["JO_LEECHEON", "JO_SEJONG"]);
+  const bad = DATA.PEOPLE.filter((p) => p.entityType === "person" && (idx.verifiedEvents[p.personId] || new Set()).size > 1
+    && !["VERIFIED_SAME", "PROBABLE_SAME"].includes(idx.identityOf[p.personId].status)).map((p) => p.personId);
+  fail(bad, "다중 등장 인물 동일성 상태");
+});
+test("ID2 병합 민감도: 미해결 노드를 쪼개면 끊기는 도달 쌍의 경로는 반드시 그 노드의 동일성 가정을 표시", () => {
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
+  const ms = mergeSensitivity(idx, a.contacts, W, { scope: a.scope });
+  assert.ok(ms.rows.length > 0, "다중 사건 PROBABLE_SAME 노드가 있어야 함");
+  const bad = [];
+  for (const r of ms.rows) for (const pair of r.lostExamples) {
+    const [s, t] = pair.split(">");
+    const p = temporalPath(a.contacts, [s], t, W.from, W.to, "CERTAIN_ORDER", a.scope);
+    if (!p) { bad.push(`${pair}(경로 없음)`); continue; }
+    const nodesOnPath = new Set(p.steps.slice(1).map((x) => x.from));
+    if (nodesOnPath.has(r.id) && !pathIdentityAssumptions(idx, p.steps).some((x) => x.node === r.id)) bad.push(`${pair} via ${r.id}`);
+  }
+  fail(bad, "동일성 가정 미표시");
+});
+
+/* ---------- CV. coverage 범위 ---------- */
+test("CV1 모든 연도에 scopeStatus(FULL/PARTIAL/NONE/UNKNOWN): 1432·1449 PARTIAL, 1444 NONE, 연도 문서에 부분 조사 경고", () => {
+  const m = Object.fromEntries(DATA.COVERAGE.map((c) => [c.year, c.scopeStatus]));
+  assert.equal(m[1432], "PARTIAL"); assert.equal(m[1449], "PARTIAL"); assert.equal(m[1444], "NONE");
+  assert.ok(DATA.COVERAGE.every((c) => ["FULL", "PARTIAL", "NONE", "UNKNOWN"].includes(c.scopeStatus)));
+  const gen = generateResearch(DATA)["chronology_1432_1449.md"];
+  for (const c of DATA.COVERAGE) {
+    assert.ok(gen[`Y${c.year}`].includes(`Scope: \`${c.scopeStatus}\``), `${c.year} scope 미출력`);
+    if (c.scopeStatus === "PARTIAL") assert.ok(gen[`Y${c.year}`].includes("부분 조사"), `${c.year} 부분 조사 경고 없음`);
+  }
+  const yearly = generateResearch(DATA)["methodology.md"].YEARLY;
+  assert.ok(yearly.includes("조사 범위가 완전하지 않") && yearly.includes("NA"));
+});
+
+/* ---------- WA. 예상된 경고 ---------- */
+test("WA1 경고는 허용 목록과 정확히 일치(예상 밖 0, stale 0), 새 경고는 예상 밖으로 분류", () => {
+  const r = validateData(DATA).warningReport;
+  assert.equal(r.unexpected.length, 0, r.unexpected.map((w) => w.message).join("; "));
+  assert.equal(r.stale.length, 0);
+  assert.equal(r.expected.length, DATA.EXPECTED_WARNINGS.length);
+  const bad = structuredClone(DATA);
+  bad.PEOPLE.push({ ...bad.PEOPLE.find((p) => p.personId === "JO_HAYEON"), personId: "JO_TEST_UNUSED", canonicalName: "테스트 미사용" });
+  const r2 = validateData(bad).warningReport;
+  assert.ok(r2.unexpected.some((w) => w.key === "JO_TEST_UNUSED"));
+  const bad2 = structuredClone(DATA);
+  bad2.EXPECTED_WARNINGS = [...bad2.EXPECTED_WARNINGS, { code: "PERSON_UNUSED", key: "NOBODY", reason: "x" }];
+  assert.equal(validateData(bad2).warningReport.stale.length, 1);
+});
+
+/* ---------- CL. 스토리 claim ---------- */
+test("CL1 스토리 claim: 기본 범위에서 보이는 claim은 DIRECT/NORMALIZED뿐, NARRATIVE는 INTERPRETATION", () => {
+  const claims = DATA.STORY_SCENES.flatMap((s) => s.statements.flatMap((st) => st.claims));
+  assert.ok(claims.length > 0);
+  const visible = claims.filter((c) => DEFAULT_SCOPE.classes.has(c.evidenceClass));
+  assert.ok(visible.every((c) => ["DIRECT", "NORMALIZED"].includes(c.evidenceClass)));
+  assert.ok(claims.filter((c) => c.claimType === "NARRATIVE").every((c) => c.evidenceClass === "INTERPRETATION"));
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", FAILURES above" : ""}`);

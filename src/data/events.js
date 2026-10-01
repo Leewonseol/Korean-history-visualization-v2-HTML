@@ -11,7 +11,7 @@
      관계: dateMin·dateMax·timeKind(instant: 범위 안의 미상 한 시점 / duration: 기간 전체 지속)
      경계 표기: 월 단위 'YYYY-MM-00'~'YYYY-MM-99', 연 단위 'YYYY-00-00'~'YYYY-99-99'
    ── 인과 ──
-     relation.causalStatus 기본값은 'unknown'. pack 문장이 직접 연결할 때만 explicit.
+     relation.causalStatus 기본값은 'UNKNOWN'. EXPLICIT_CAUSAL·PROCEDURAL_SEQUENCE는 causalEvidence(pack locator·quote) 필수.
      사건 사이 연결은 eventLinks(linkType: causal / same_record / same_campaign / reference).
      시간 선후만으로 링크를 만들지 않는다.
    ── 경로 역할 ──
@@ -21,7 +21,7 @@
 const PD = "pack_v1_direct", PV = "pack_v1_derived", L2 = "inherited_v2", SEED = "legacy_anchor_seed", INT = "interpretation";
 
 function r(source, target, layer, relationType, o) {
-  return { source, target, layer, relationType, certainty: "confirmed", causalStatus: "unknown", direction: "directed", pathEligible: true, ...o };
+  return { source, target, layer, relationType, certainty: "confirmed", causalStatus: "UNKNOWN", direction: "directed", pathEligible: true, ...o };
 }
 const p = (o = {}) => ({ provenance: PD, ...o });
 const d = (rule, o = {}) => ({ provenance: PV, derivationRule: rule, ...o });
@@ -73,9 +73,9 @@ export const EVENTS = [
       O("withdrawal", "날이 저물어 추격 중지", { subjectId: "JO_PARKCHO" })
     ],
     relations: [
-      r("GRP_1432_RAIDERS", "GRP_1432_YEOYEON_RESIDENTS", "MILITARY_CONFLICT", "raid", p({ ...BEFORE("1432-12-09"), note: "pack: 야인 -> 여연 주민 MILITARY_ATTACK(layer 정규화 R6)" })),
-      r("JO_PARKCHO", "GRP_1432_RAIDERS", "MILITARY_CONFLICT", "pursue_and_engage", p({ ...BEFORE("1432-12-09") })),
-      r("JO_PARKCHO", "GRP_1432_YEOYEON_RESIDENTS", "MILITARY_ACTION", "recover_and_protect_captives", p({ ...BEFORE("1432-12-09") })),
+      r("GRP_1432_RAIDERS", "GRP_1432_YEOYEON_RESIDENTS", "MILITARY_CONFLICT", "raid", d("R4_group_placeholder", { ...BEFORE("1432-12-09"), note: "pack: 야인 -> 여연 주민 MILITARY_ATTACK(layer 정규화 R6)" })),
+      r("JO_PARKCHO", "GRP_1432_RAIDERS", "MILITARY_CONFLICT", "pursue_and_engage", d("R4_group_placeholder", { ...BEFORE("1432-12-09") })),
+      r("JO_PARKCHO", "GRP_1432_YEOYEON_RESIDENTS", "MILITARY_ACTION", "recover_and_protect_captives", d("R4_group_placeholder", { ...BEFORE("1432-12-09") })),
       r("ORG_PYEONGAN_GAMSA", "JO_SEJONG", "REPORT", "frontier_report", d("R1_court_recipient", { ...AT("1432-12-09"), note: "pack WHO: 평안도 감사(보고 주체, 실명 미기재). 수신자=조정 → 세종(R1), 시각=기사일(R7)." }))
     ],
     sourceIds: ["SRC_1432_1209"],
@@ -104,7 +104,7 @@ export const EVENTS = [
     ],
     sourceIds: ["SRC_1432_1211"],
     evidenceSummary: "여연 침입 이틀 뒤 화포·축성·훈련 논의. 이천·최해산·정흠지 등은 먼저 관원·장인을 보내 화포 쓰는 법을 가르치고 철환을 공급하자고 했고, 방어처의 석성/목책도 논의되었다. pack은 '이천은 이미 이때 북방 방어 정책 네트워크 안에 있다'고 적는다.",
-    eventLinks: [{ eventId: "E1432_1209", linkType: "reference", causalStatus: "sequence_only", provenance: PV,
+    eventLinks: [{ eventId: "E1432_1209", linkType: "reference", causalStatus: "TEMPORAL_ASSOCIATION", provenance: PV,
       note: "pack 제목 'immediately after Yŏyŏn invasion' — 선후·언급 관계일 뿐 인과로 저장하지 않음" }],
     storyWeight: 2
   }),
@@ -140,8 +140,8 @@ export const EVENTS = [
       O("unresolved", "조정이 주장의 진위(사실/날조)를 명시적으로 논쟁")
     ],
     relations: [
-      r("JZ_YUEULHAP", "JO_SEJONG", "DIPLOMACY", "return_captives_and_convey_claim", d("R1_court_recipient", { note: "pack: 유을합 -> 조선 : CLAIM / DIPLOMACY" })),
-      r("JZ_MANJU", "JO_SEJONG", "COUNTER_CLAIM", "deny_and_attribute_raid_to_hollaon", d("R1_court_recipient", { certainty: "contemporary_claim", note: "pack: 이만주 -> 조선 : COUNTER_CLAIM" })),
+      r("JZ_YUEULHAP", "ORG_JOSEON_COURT", "DIPLOMACY", "return_captives_and_convey_claim", d("R6_layer_normalize", { note: "pack: 유을합 -> 조선 : CLAIM / DIPLOMACY. 수신자 '조선'(정치체)은 R1 대상이 아니라 ORG_JOSEON_COURT(2차 감사에서 세종→조선 조정으로 교정)." })),
+      r("JZ_MANJU", "ORG_JOSEON_COURT", "COUNTER_CLAIM", "deny_and_attribute_raid_to_hollaon", p({ certainty: "contemporary_claim", note: "pack: 이만주 -> 조선 : COUNTER_CLAIM. 수신자 '조선'은 ORG_JOSEON_COURT(2차 감사에서 교정)." })),
       ...["JO_ANSUNGSEON", "JO_KIMJONGSEO", "JO_ANSUN", "JO_HAGYEONGBOK", "JO_HWANGHUI", "JO_HEOJO", "JO_SINJANG", "JO_KIMIKJEONG",
           "JO_SEONGEOK", "JO_JEONGYEON", "JO_JOGYESAENG", "JO_LEEMAENGGYUN", "JO_JOMALSAENG"]
         .map((x) => r("JO_SEJONG", x, "POLICY", "deliberate_truth_and_responsibility",
@@ -227,7 +227,7 @@ export const EVENTS = [
     ],
     sourceIds: ["SRC_1433_0310"],
     evidenceSummary: "(v2) 안숭선·김청이 성죄방목을 작성했다. pack v1에 이 기사는 없다.",
-    eventLinks: [{ eventId: "E1432_1209", linkType: "reference", causalStatus: "unknown", provenance: L2, note: "죄목이 강계·여연 침범을 직접 거론(v2 요약). v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }],
+    eventLinks: [{ eventId: "E1432_1209", linkType: "reference", causalStatus: "UNKNOWN", provenance: L2, note: "죄목이 강계·여연 침범을 직접 거론(v2 요약). v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }],
     discrepancies: ["D01"], storyWeight: 1
   }),
   ev({
@@ -293,7 +293,7 @@ export const EVENTS = [
     ],
     sourceIds: ["SRC_1433_0507"],
     evidenceSummary: "목표 지점(pack PLACES): 이만주 채리, 거여, 마천, 올라, 임합라 부모 채리, 팔리수, 임합라 채리. 각 부대가 살상·포획·재산 탈취를 보고했고 최윤덕 부대는 조선 측 사망 4·부상 20. 모든 수치는 조선 지휘부 보고. pack은 어느 부대가 어느 거주지를 쳤는지 대응시키지 않으므로 인물↔인물 공격 관계는 legacy로만 남긴다. 이만주의 항복 서술 없음.",
-    eventLinks: [{ eventId: "E1433_0410", linkType: "same_record", causalStatus: "unknown", provenance: PV, note: "같은 5/7 보고 기사의 집결·공격" }],
+    eventLinks: [{ eventId: "E1433_0410", linkType: "same_record", causalStatus: "PROCEDURAL_SEQUENCE", causalEvidence: { locator: "pack_v1:E1433_0507:EVENT DATE:L251", quote: "campaign assembled 1433-04-10; attack completed around 1433-04-19" }, provenance: PV, note: "같은 5/7 보고 기사의 집결·공격" }],
     discrepancies: ["D07", "D12", "D13"], storyWeight: 3
   }),
   ev({
@@ -310,7 +310,7 @@ export const EVENTS = [
     ],
     sourceIds: ["SRC_1433_0507"], embeddedDocumentAuthor: "JO_CHOEYUNDEOK",
     evidenceSummary: "보고자는 최윤덕, 전달자는 박호문. 박호문→조정 보고의 시각은 기사일(R7).",
-    eventLinks: [{ eventId: "E1433_0419", linkType: "same_record", causalStatus: "unknown", provenance: PV, note: "이 보고가 정벌을 기록" }],
+    eventLinks: [{ eventId: "E1433_0419", linkType: "same_record", causalStatus: "PROCEDURAL_SEQUENCE", causalEvidence: { locator: "pack_v1:E1433_0507:EVENT DATE:L251", quote: "campaign assembled 1433-04-10; attack completed around 1433-04-19" }, provenance: PV, note: "이 보고가 정벌을 기록" }],
     discrepancies: ["D07"], storyWeight: 3
   }),
   ev({
@@ -338,13 +338,13 @@ export const EVENTS = [
     outcomes: [O("reward", "정벌 지휘관 공로에 따른 관직 제수"), O("appointment", "같은 기사에 다른 관원도 등장(개인별 제수 내용 pack 미기재)")],
     relations: [
       ...["JO_CHOEYUNDEOK", "JO_LEESUNMONG", "JO_LEEGAK", "JO_LEEJINGSEOK", "JO_KIMHYOSEONG", "JO_HONGSASEOK"]
-        .map((x) => r("JO_SEJONG", x, "REWARD", "promotion_for_campaign_merit", d("R3_who_expansion", { causalStatus: "explicit", note: "pack: 세종 -> campaign commanders : REWARD / APPOINTMENT ('Explicit context: reward of commanders' merit')" }))),
+        .map((x) => r("JO_SEJONG", x, "REWARD", "promotion_for_campaign_merit", d("R3_who_expansion", { causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0516_A:WHAT:L324", quote: "Explicit context: reward of commanders' merit." }, note: "pack: 세종 -> campaign commanders : REWARD / APPOINTMENT ('Explicit context: reward of commanders' merit')" }))),
       ...["JO_GWONJIN", "JO_ANSUN", "JO_LEESUKCHI", "JO_PARKANSIN", "JO_NAMJI", "JO_LEESAGWAN", "JO_GWONBOK", "JO_ANGUGYEONG", "JO_HEOJO", "JO_MAENGSASEONG", "JO_KIMJONGSEO"]
         .map((x) => r("JO_SEJONG", x, "COMMAND", "appoint_office", interp({ note: "pack 관계는 '세종 -> campaign commanders'뿐. 이 인물이 같은 기사에서 관직을 받았는지는 해석." })))
     ],
     sourceIds: ["SRC_1433_0516A"],
     evidenceSummary: "관직·승진 제수. pack은 지휘관 공로 보상 맥락을 명시한다. 지휘관 6명에 대한 포상만 pack 관계이고, 그 밖의 WHO 인물에 대한 제수 관계는 해석으로 분리했다.",
-    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "explicit", provenance: PV, note: "pack: 'Promotions following first campaign' + 'reward of commanders' merit'" }],
+    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0516_A:WHAT:L324", quote: "Explicit context: reward of commanders' merit." }, provenance: PV, note: "pack: 'Promotions following first campaign' + 'reward of commanders' merit'" }],
     storyWeight: 2
   }),
   ev({
@@ -366,10 +366,10 @@ export const EVENTS = [
     mechanisms: ["reward"],
     outcomes: [O("reward", "노비 하사(사람을 재산으로 준 당대 제도). 하사된 사람들의 출신은 사료에 기재되지 않음")],
     relations: [["JO_CHOEYUNDEOK", 10], ["JO_LEESUNMONG", 8], ["JO_LEEGAK", 6], ["JO_LEEJINGSEOK", 6], ["JO_HONGSASEOK", 5], ["JO_KIMHYOSEONG", 4]]
-      .map(([x, n]) => r("ORG_JOSEON_COURT", x, "REWARD", "bestow_nobi", d("R4_group_placeholder", { causalStatus: "explicit", note: `노비 ${n}구. pack: state -> commanders : REWARD ('campaign rewards')` }))),
+      .map(([x, n]) => r("ORG_JOSEON_COURT", x, "REWARD", "bestow_nobi", d("R3_who_expansion", { causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0516_B:TITLE:L332", quote: "Enslaved persons bestowed as campaign rewards" }, note: `노비 ${n}구. pack: state -> commanders : REWARD ('campaign rewards')` }))),
     sourceIds: ["SRC_1433_0516B"],
     evidenceSummary: "정벌 지휘관에게 노비를 하사했다(최윤덕 10, 이순몽 8, 이각 6, 이징석 6, 홍사석 5, 김효성 4). 사람을 재산으로 이전한 당대 제도로 기록하며, 하사된 사람들의 출신은 추정하지 않는다.",
-    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "explicit", provenance: PV, note: "pack 제목 'bestowed as campaign rewards'" }],
+    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0516_B:TITLE:L332", quote: "Enslaved persons bestowed as campaign rewards" }, provenance: PV, note: "pack 제목 'bestowed as campaign rewards'" }],
     storyWeight: 2
   }),
   ev({
@@ -388,13 +388,13 @@ export const EVENTS = [
     mechanisms: ["welfare"],
     outcomes: [O("welfare", "치제·곡식·복호", { subjectId: "GRP_1433_WARDEAD" })],
     relations: [
-      r("ORG_JOSEON_COURT", "GRP_1433_WARDEAD", "WELFARE", "commemorate_and_compensate", d("R4_group_placeholder", { causalStatus: "explicit", note: "pack: state -> dead soldiers / bereaved households" })),
-      r("ORG_JOSEON_COURT", "JO_ANEULGYEONG", "WELFARE", "commemorate_named_dead", d("R5_content_actor", { causalStatus: "explicit" })),
+      r("ORG_JOSEON_COURT", "GRP_1433_WARDEAD", "WELFARE", "commemorate_and_compensate", d("R4_group_placeholder", { causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0517:WHAT:L366", quote: "For those killed:" }, note: "pack: state -> dead soldiers / bereaved households" })),
+      r("ORG_JOSEON_COURT", "JO_ANEULGYEONG", "WELFARE", "commemorate_named_dead", d("R3_who_expansion", { causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0517:WHAT:L366", quote: "For those killed:" } })),
       r("ORG_JOSEON_COURT", "GRP_1433_EXPEDITION_TROOPS", "WELFARE", "compensate_horse_loss", d("R4_group_placeholder", { note: "pack: state -> soldiers/officers : COMPENSATION" }))
     ],
     sourceIds: ["SRC_1433_0517"],
     evidenceSummary: "전사자 치제, 전사 군관 쌀·콩 5석·군졸 3석·복호 5년, 병사 군관 3석·군졸 2석·복호 2년, 말을 잃은 자 복호 2년. 안을경 등 이름 있는 전사자와 무명 전사자.",
-    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "explicit", provenance: PV, note: "pack 제목 'campaign dead and sick'" }],
+    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0517:TITLE:L354", quote: "Welfare and commemoration for campaign dead and sick" }, provenance: PV, note: "pack 제목 'campaign dead and sick'" }],
     storyWeight: 2
   }),
   ev({
@@ -421,14 +421,14 @@ export const EVENTS = [
     mechanisms: ["envoy", "claim", "report"],
     outcomes: [O("claim_made", "맹가첩목아의 진술·항의(독립적으로 확인된 사실 아님)", { subjectId: "JZ_MENGGETEMUR", certainty: "contemporary_claim" })],
     relations: [
-      r("JZ_MENGGETEMUR", "JO_JIHAM", "DIPLOMACY", "protest_and_statement_to_envoy", d("R5_content_actor", { ...BEFORE("1433-06-10"), causalStatus: "explicit", note: "pack: 맹가첩목아 -> 조선 : CLAIM / DIPLOMATIC_PROTEST. 진술을 들은 사람은 지함(WHAT)." })),
+      r("JZ_MENGGETEMUR", "JO_JIHAM", "DIPLOMACY", "protest_and_statement_to_envoy", d("R5_content_actor", { ...BEFORE("1433-06-10"), causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0610:WHAT:L402", quote: "He criticized the campaign for failing to distinguish innocent from guilty." }, note: "pack: 맹가첩목아 -> 조선 : CLAIM / DIPLOMATIC_PROTEST. 진술을 들은 사람은 지함(WHAT)." })),
       r("JZ_MENGGETEMUR", "JZ_IMHALA", "COUNTER_CLAIM", "identify_as_ringleader", d("R5_content_actor", { ...BEFORE("1433-06-10"), certainty: "contemporary_claim", pathEligible: false, note: "주장의 대상(about) — 접촉이 아님" })),
       r("JZ_MENGGETEMUR", "JZ_MANJU", "COUNTER_CLAIM", "exculpate", d("R5_content_actor", { ...BEFORE("1433-06-10"), certainty: "contemporary_claim", pathEligible: false, note: "주장의 대상(about) — 접촉이 아님" })),
       r("JO_JIHAM", "JO_SEJONG", "REPORT", "envoy_report", p({ ...AT("1433-06-10"), note: "pack: 지함 -> 세종 : REPORT. 시각=기사일(R7)" }))
     ],
     sourceIds: ["SRC_1433_0610"],
     evidenceSummary: "지함이 알목하에서 돌아와 맹가첩목아의 말을 보고했다: 임합라가 실제 우두머리이고 이만주는 말렸다, 정벌이 무고한 자와 죄인을 가리지 않았다, 파저강에서 잡혀간 친족을 돌려달라. 진술 시점은 기사일 이전(미상).",
-    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "explicit", provenance: PV, note: "pack: 정벌을 비판하고 파저강에서 잡혀간 친족 송환을 요청" }],
+    eventLinks: [{ eventId: "E1433_0419", linkType: "causal", causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1433_0610:WHAT:L402", quote: "He criticized the campaign for failing to distinguish innocent from guilty." }, provenance: PV, note: "pack: 정벌을 비판하고 파저강에서 잡혀간 친족 송환을 요청" }],
     discrepancies: ["D01"], certainty: "contemporary_claim", storyWeight: 2
   }),
   ev({
@@ -441,10 +441,10 @@ export const EVENTS = [
     mechanisms: ["diplomacy", "mediation"],
     outcomes: [O("diplomatic_exchange", "칙서는 진위를 분명히 가릴 수 없다고 명시하고 관련 당사자에게 반환·침범 금지를 명령(조선 유죄 판정 아님)")],
     relations: [
-      r("MING_XUANDE", "JO_SEJONG", "DIPLOMACY", "imperial_mediation_order", p({ ...AT("1433-08L-10"), note: "pack: 선덕제 -> 조선 : MEDIATION. 조선 조정 도달 시각=기사일(R7)." })),
+      r("MING_XUANDE", "ORG_JOSEON_COURT", "DIPLOMACY", "imperial_mediation_order", p({ ...AT("1433-08L-10"), note: "pack: 선덕제 -> 조선 : MEDIATION. 수신자 '조선'은 ORG_JOSEON_COURT(2차 감사에서 교정). 도달 시각=기사일(R7, 시각 근거)." })),
       ...["JZ_YANGMOKDABOL", "JZ_SALMANDAPSILI", "JZ_MENGGETEMUR", "JZ_FANCHA", "JZ_MANJU", "JZ_ARADAP"]
         .map((x) => r("MING_XUANDE", x, "DIPLOMACY", "imperial_mediation_order", d("R3_who_expansion", { ...UNKNOWN_T, note: "pack: 선덕제 -> Jurchen actors. 여진 측 전달 시점 미상." }))),
-      r("JO_SEJONG", "MING_XUANDE", "CLAIM", "prior_account_to_ming", d("R1_court_recipient", { ...BEFORE("1433-08L-10"), note: "pack: Joseon -> Ming : CLAIM. 제출일 미상(칙서 이전)." })),
+      r("ORG_JOSEON_COURT", "MING_XUANDE", "CLAIM", "prior_account_to_ming", d("R1_court_recipient", { ...BEFORE("1433-08L-10"), note: "pack: Joseon -> Ming : CLAIM. 주체 'Joseon'은 ORG_JOSEON_COURT(2차 감사에서 세종에서 교정). 제출일 미상(칙서 이전)." })),
       r("JZ_MANJU", "MING_XUANDE", "CLAIM", "prior_account_to_ming", d("R1_court_recipient", { ...BEFORE("1433-08L-10"), note: "pack: 이만주 side -> Ming : CLAIM. 제출일 미상(칙서 이전)." }))
     ],
     sourceIds: ["SRC_1433_08L10"],
@@ -483,7 +483,7 @@ export const EVENTS = [
     mechanisms: ["policy_deliberation"], outcomes: [O("unresolved", "(v2) 송환 여부 논의")],
     relations: [r("JO_SINSANG", "JO_SEJONG", "POLICY", "oppose_repatriation", leg())],
     sourceIds: ["SRC_1434_0422"], evidenceSummary: "(v2) pack v1에 없음.",
-    eventLinks: [{ eventId: "E1434_0416", linkType: "reference", causalStatus: "unknown", provenance: L2, note: "v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }]
+    eventLinks: [{ eventId: "E1434_0416", linkType: "reference", causalStatus: "UNKNOWN", provenance: L2, note: "v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }]
   }),
   ev({
     id: "E1434_0426", title: "이만주 관하 인원의 조선 도망과 처리 논의(legacy)", ...DAY("1434-04-26", "legacy_record_date"), provenance: L2, theaterBasis: "legacy",
@@ -600,8 +600,8 @@ export const EVENTS = [
     ],
     relations: [
       r("GRP_ORYANGHAP_1435", "GRP_1435_YEOYEON_GARRISON", "MILITARY_CONFLICT", "siege", d("R4_group_placeholder", { note: "pack: Oryanghap -> Yŏyŏn : MILITARY_ATTACK(대상 '여연'을 수비군 group으로)" })),
-      ...["JO_KIMYUNSU", "JO_LEEJIN", "JO_YEOSEONGRYEOL", "JO_KIMSUYEON"].map((x) => r(x, "GRP_1435_YEOYEON_GARRISON", "COMMAND", "command_defenders", p({ note: "pack: 김윤수/이진/여성렬/김수연 -> defenders : COMMAND" }))),
-      r("GRP_1435_YEOYEON_GARRISON", "GRP_ORYANGHAP_1435", "MILITARY_CONFLICT", "defend", p({ note: "pack: defenders -> Oryanghap : DEFENSE" })),
+      ...["JO_KIMYUNSU", "JO_LEEJIN", "JO_YEOSEONGRYEOL", "JO_KIMSUYEON"].map((x) => r(x, "GRP_1435_YEOYEON_GARRISON", "COMMAND", "command_defenders", d("R4_group_placeholder", { note: "pack: 김윤수/이진/여성렬/김수연 -> defenders : COMMAND" }))),
+      r("GRP_1435_YEOYEON_GARRISON", "GRP_ORYANGHAP_1435", "MILITARY_CONFLICT", "defend", d("R4_group_placeholder", { note: "pack: defenders -> Oryanghap : DEFENSE" })),
       r("JO_KIMSUYEON", "GRP_1435_KIMSUYEON_100", "COMMAND", "lead_pursuit_party", leg({ note: "v2 요약의 추격대 서술. pack 발췌에는 없음." })),
       r("JO_KIMSUYEON", "GRP_ORYANGHAP_1435", "MILITARY_ACTION", "pursue_then_withdraw", leg({ note: "v2: 복병 약 300기를 보고 철수. pack 발췌에는 없음." }))
     ],
@@ -639,7 +639,7 @@ export const EVENTS = [
     mechanisms: ["relief"],
     outcomes: [O("relief", "신 입거민 구휼"), O("unresolved", "군마 손실에 대한 병참 대응")],
     relations: [r("ORG_HAMGIL_FIELD", "GRP_1435_NORTHERN_SETTLERS", "WELFARE", "relief_grain_fodder",
-      d("R4_group_placeholder", { ...BEFORE("1435-03-12"), note: "pack: provincial government -> settlers : RELIEF. 'provincial government'의 도명은 pack에 없음(장소로부터의 정규화)." }))],
+      interp({ ...BEFORE("1435-03-12"), note: "pack: provincial government -> settlers : RELIEF. 'provincial government'가 어느 도의 관아인지 pack에 없음 — 지명(길주 이북·회령·경원)으로 함길도 관아를 특정한 것은 R1~R7 밖의 추론이므로 해석(2차 감사에서 재분류)." }))],
     sourceIds: ["SRC_1435_0312"],
     evidenceSummary: "길주 이북·회령·경원에 큰 눈이 내려 가축이 죽었고, 새로 옮겨 온 입거민의 농우와 전마가 피해를 입었다. 곡식·사료·운송으로 구휼했다. 구휼 시점은 기사일 이전(미상).",
     storyWeight: 1
@@ -654,7 +654,7 @@ export const EVENTS = [
     outcomes: [O("report_filed", "pack: 변경 확장·방어에 지속적인 민간 정착 정책이 필요했음을 보여 줌")],
     relations: [
       r("ORG_HAMGIL_DOJEOLJESA", "JO_SEJONG", "REPORT", "settler_condition_report", d("R1_court_recipient", { note: "pack: field command -> court : REPORT" })),
-      r("ORG_JOSEON_COURT", "GRP_1435_NORTHERN_SETTLERS", "RESETTLEMENT", "settler_agricultural_policy", p({ ...UNKNOWN_T, note: "pack: state -> settlers : RESETTLEMENT / AGRICULTURAL_POLICY. 시점 미상." }))
+      r("ORG_JOSEON_COURT", "GRP_1435_NORTHERN_SETTLERS", "RESETTLEMENT", "settler_agricultural_policy", d("R4_group_placeholder", { ...UNKNOWN_T, note: "pack: state -> settlers : RESETTLEMENT / AGRICULTURAL_POLICY. 시점 미상." }))
     ],
     sourceIds: ["SRC_1435_0408"],
     evidenceSummary: "함길도 지휘관(실명 미기재)이 입거민의 경작·도망·농우·전마 문제를 보고했다.",
@@ -676,7 +676,7 @@ export const EVENTS = [
       r("JO_SEJONG", "GRP_1435_JAN_YEOYEON_VICTIMS", "WELFARE", "order_condolence_relief", leg())
     ],
     sourceIds: ["SRC_1435_0613"], evidenceSummary: "(v2) pack v1에 없음.",
-    eventLinks: [{ eventId: "E1435_JANRAID", linkType: "reference", causalStatus: "unknown", provenance: L2, note: "v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }], discrepancies: ["D06"]
+    eventLinks: [{ eventId: "E1435_JANRAID", linkType: "reference", causalStatus: "UNKNOWN", provenance: L2, note: "v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }], discrepancies: ["D06"]
   }),
   ev({
     id: "E1435_0617", title: "사헌부, 김윤수 처분 강화 요구(legacy)", ...DAY("1435-06-17", "legacy_record_date"), provenance: L2, theaterBasis: "legacy",
@@ -685,7 +685,7 @@ export const EVENTS = [
     mechanisms: ["policy_deliberation"], outcomes: [O("decision", "(v2) 유임 방침 유지", { subjectId: "JO_SEJONG" })],
     relations: [r("JO_CHOEGYEONGMYEONG", "JO_KIMYUNSU", "ACCOUNTABILITY", "demand_reinterrogation", leg()), r("JO_CHOEGYEONGMYEONG", "JO_SEJONG", "POLICY", "remonstrate", leg())],
     sourceIds: ["SRC_1435_0617"], evidenceSummary: "(v2) pack v1에 없음.",
-    eventLinks: [{ eventId: "E1435_0613", linkType: "reference", causalStatus: "unknown", provenance: L2, note: "v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }]
+    eventLinks: [{ eventId: "E1435_0613", linkType: "reference", causalStatus: "UNKNOWN", provenance: L2, note: "v2는 인과(causedBy, explicit)로 기록했으나 pack v1에 없는 기사라 인과로 승격하지 않음(언급 관계로만 보존)" }]
   }),
   ev({
     id: "E1435_0719", title: "회령·경원 호구를 나눠 종성·공성 설치",
@@ -718,8 +718,8 @@ export const EVENTS = [
     mechanisms: ["punishment", "resettlement"],
     outcomes: [O("punishment", "부유한 호를 숨기고 가난한 호를 골랐다는 혐의의 실무자 처벌"), O("movement", "돌아온 자를 처벌하고 경원·회령에 재배치")],
     relations: [
-      r("ORG_JOSEON_COURT", "GRP_1435_RESETTLE_AGENTS", "PUNISHMENT", "punish_selection_manipulation", p({ note: "pack: state -> local agents : ACCOUNTABILITY / PUNISHMENT" })),
-      r("ORG_JOSEON_COURT", "GRP_1435_MIGRANT_HH", "RESETTLEMENT", "coercive_resettlement", p({ note: "pack: state -> households : COERCIVE_RESETTLEMENT" }))
+      r("ORG_JOSEON_COURT", "GRP_1435_RESETTLE_AGENTS", "PUNISHMENT", "punish_selection_manipulation", d("R4_group_placeholder", { note: "pack: state -> local agents : ACCOUNTABILITY / PUNISHMENT" })),
+      r("ORG_JOSEON_COURT", "GRP_1435_MIGRANT_HH", "RESETTLEMENT", "coercive_resettlement", d("R4_group_placeholder", { note: "pack: state -> households : COERCIVE_RESETTLEMENT" }))
     ],
     sourceIds: ["SRC_1435_0726"],
     evidenceSummary: "지방 실무자들이 부유한 호를 숨기고 가난한 호를 골랐다는 혐의로 태형·강제 이주 등의 벌을 받았고, 도망해 돌아온 자는 처벌 후 경원·회령에 다시 배치되었다. pack: 사민을 순수한 자발적 과정으로 그리지 말 것.",
@@ -747,7 +747,7 @@ export const EVENTS = [
       O("punishment", "태만한 군사·감독자 율에 따라 처벌", { subjectId: "GRP_1435_NEGLIGENT" })
     ],
     relations: [
-      ...["JO_KIMYUNSU", "JO_JANGSAU", "JO_BAECHEOL"].map((x) => r("ORG_JOSEON_COURT", x, "REWARD", "promote_one_grade", p({ causalStatus: "explicit", note: "pack: state -> meritorious soldiers : REWARD(공적 명시)" }))),
+      ...["JO_KIMYUNSU", "JO_JANGSAU", "JO_BAECHEOL"].map((x) => r("ORG_JOSEON_COURT", x, "REWARD", "promote_one_grade", d("R3_who_expansion", { causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1435_0918:WHAT:L635", quote: "meritorious personnel: one-grade promotion" }, note: "pack: state -> meritorious soldiers : REWARD(공적 명시)" }))),
       r("ORG_JOSEON_COURT", "GRP_1435_WARDEAD", "WELFARE", "posthumous_office_and_aid", d("R4_group_placeholder", { note: "pack: state -> dead/bereaved : WELFARE / HONOR" })),
       r("ORG_JOSEON_COURT", "GRP_1435_NEGLIGENT", "PUNISHMENT", "punish_by_law", d("R4_group_placeholder", { note: "pack: state -> negligent personnel : ACCOUNTABILITY / PUNISHMENT" }))
     ],
@@ -770,7 +770,7 @@ export const EVENTS = [
     outcomes: [O("policy_change", "중앙 건의가 평안도 지휘관에게 전달됨(이천의 회신은 '기대'일 뿐)")],
     relations: [
       r("GRP_1436_PROPOSERS", "JO_SEJONG", "POLICY", "submit_anti_incursion_proposals", d("R4_group_placeholder", { ...BEFORE("1436-06L-19"), note: "pack: central officials -> 세종 : POLICY_ADVICE. 제출 시점은 기사일 이전." })),
-      r("JO_SEJONG", "JO_LEECHEON", "POLICY", "transfer_proposals_and_order_review", p({ note: "pack: 세종 -> 이천 : POLICY_TRANSFER / COMMAND" }))
+      r("JO_SEJONG", "JO_LEECHEON", "POLICY", "transfer_proposals_and_order_review", d("R6_layer_normalize", { note: "pack: 세종 -> 이천 : POLICY_TRANSFER / COMMAND" }))
     ],
     sourceIds: ["SRC_1436_06L19"],
     evidenceSummary: "세종이 침입 방어 건의들을 모아 베껴 평안도 지휘관 이천에게 보내며, 서방 방어를 그에게 맡겼으니 건의를 평가하고 더 나은 계책을 올리라고 했다. pack: '이천은 1437 정벌 이전부터 정책→현장의 연결자'. 이천의 회신은 기대된 피드백일 뿐이라 관계를 만들지 않았다.",
@@ -824,7 +824,7 @@ export const EVENTS = [
     what: [W("transfer", "요격 실패 자책, 재정벌 필요성, 대규모 원정의 한계, 복수 전략안", "JO_LEECHEON", "JO_SEJONG")],
     mechanisms: ["report", "proposal"],
     outcomes: [O("report_filed", "최근 침입자를 막지 못한 책임을 스스로 인정하고 전략 대안 제시")],
-    relations: [r("JO_LEECHEON", "JO_SEJONG", "REPORT", "self_accountability_and_strategy", p({ note: "pack: 이천 -> 세종 : REPORT / SELF_ACCOUNTABILITY / MILITARY_ADVICE" }))],
+    relations: [r("JO_LEECHEON", "JO_SEJONG", "REPORT", "self_accountability_and_strategy", d("R6_layer_normalize", { note: "pack: 이천 -> 세종 : REPORT / SELF_ACCOUNTABILITY / MILITARY_ADVICE" }))],
     sourceIds: ["SRC_1437_0611"], embeddedDocumentAuthor: "JO_LEECHEON",
     evidenceSummary: "이천이 최근 침입자를 요격하지 못한 책임을 인정하고, 군사적 징벌이 다시 필요할 수 있으나 드러난 대규모 원정은 적이 숨어 효과가 없을 수 있다며 여러 전략 대안을 올렸다.",
     storyWeight: 2
@@ -838,8 +838,8 @@ export const EVENTS = [
     mechanisms: ["proposal", "royal_order", "fortification"],
     outcomes: [O("fortification", "pack: 베테랑의 변경 지식이 장기적으로 전달됨을 보여 줌")],
     relations: [
-      r("JO_CHOEYUNDEOK", "JO_SEJONG", "POLICY", "defense_advice", p()),
-      r("JO_SEJONG", "ORG_HAMGIL_DOJEOLJESA", "FORTIFICATION", "order_reinforcement", p({ note: "pack: 세종 -> frontier commander : COMMAND / FORTIFICATION" }))
+      r("JO_CHOEYUNDEOK", "JO_SEJONG", "POLICY", "defense_advice", d("R6_layer_normalize")),
+      r("JO_SEJONG", "ORG_HAMGIL_DOJEOLJESA", "FORTIFICATION", "order_reinforcement", d("R3_who_expansion", { note: "pack: 세종 -> frontier commander : COMMAND / FORTIFICATION" }))
     ],
     sourceIds: ["SRC_1437_0820"],
     evidenceSummary: "최윤덕이 이전 강계 경험을 바탕으로 여장·전대·해자·상시 경계 보강을 건의했고 이것이 함길도 도절제사에게 전달되었다. 서방(이천)과 직책을 병합하지 않는다.",
@@ -883,12 +883,12 @@ export const EVENTS = [
     relations: [
       ...["JO_LEECHEON", "JO_LEEHWA", "JO_JEONGDEOKSEONG"].map((x) =>
         r(x, "GRP_1437_PAJEOGANG_TARGET", "MILITARY_ACTION", "search_burn_and_fight", d("R3_who_expansion", { ...RANGE("1437-09-07", "1437-09-16"), note: "pack: Joseon armies -> target settlements : MILITARY_ACTION. 부대별 교전일 미상." }))),
-      r("JO_LEECHEON", "JO_SEJONG", "REPORT", "victory_report", d("R7_report_on_record", { ...AT("1437-09-22"), note: "pack: field -> court : VICTORY_REPORT" })),
-      r("JO_CHOEJEONGAN", "JO_SEJONG", "REPORT", "separate_victory_report", d("R7_report_on_record", { ...AT("1437-09-22"), note: "pack: '최정안 mentioned as separate victory reporter'" }))
+      r("JO_LEECHEON", "JO_SEJONG", "REPORT", "victory_report", interp({ ...AT("1437-09-22"), note: "pack: field -> court : VICTORY_REPORT. 'field'를 이천으로 특정한 것은 pack 본문 근거가 없어 해석(2차 감사에서 재분류). 원문 확인 필요." })),
+      r("JO_CHOEJEONGAN", "JO_SEJONG", "REPORT", "separate_victory_report", d("R5_content_actor", { ...AT("1437-09-22"), note: "pack: '최정안 mentioned as separate victory reporter'" }))
     ],
     sourceIds: ["SRC_1437_0922"],
     evidenceSummary: "세 부대가 압록강을 건너 여러 거주지·농장을 수색·소각하고 여러 날 싸웠다(9/7~9/16). 적이 진형을 공격하자 화포를 썼다. 조선 측 보고: 살상·포획 합계 60, 조선 측 손실 황해도 자원군 1명. 대상 세력은 특정하지 않는다. 『서정록』 대조 미수행(D08).",
-    eventLinks: [{ eventId: "E1437_0914", linkType: "same_campaign", causalStatus: "unknown", provenance: PV, note: "두 pack 항목 모두 '세 부대의 압록강 도하'를 기술" }],
+    eventLinks: [{ eventId: "E1437_0914", linkType: "same_campaign", causalStatus: "PROCEDURAL_SEQUENCE", causalEvidence: { locator: "pack_v1:E1437_0922:WHAT:L808", quote: "Three armies crossed Yalu." }, provenance: PV, note: "두 pack 항목 모두 '세 부대의 압록강 도하'를 기술" }],
     discrepancies: ["D08"], storyWeight: 3
   }),
 
@@ -906,7 +906,7 @@ export const EVENTS = [
     outcomes: [O("report_filed", "김종서의 상세 평가 회계")],
     relations: [
       r("JO_SEJONG", "JO_KIMJONGSEO", "INTELLIGENCE", "request_assessment", p({ ...BEFORE("1438-07-29"), note: "pack: 세종 -> 김종서 : INTELLIGENCE_REQUEST. 질의 시점은 회계 기사일 이전." })),
-      r("JO_KIMJONGSEO", "JO_SEJONG", "REPORT", "hoegye_intelligence_assessment", p({ note: "pack: 김종서 -> 세종 : INTELLIGENCE_REPORT(회계)" }))
+      r("JO_KIMJONGSEO", "JO_SEJONG", "REPORT", "hoegye_intelligence_assessment", d("R6_layer_normalize", { note: "pack: 김종서 -> 세종 : INTELLIGENCE_REPORT(회계)" }))
     ],
     sourceIds: ["SRC_1438_0729"], embeddedDocumentAuthor: "JO_KIMJONGSEO", documentType: "hoegye",
     evidenceSummary: "세종이 오랜 변경 경험을 가진 김종서에게 여진(범찰·동창)의 마음이 실제로 어디에 있는지 물었고, 김종서가 상세한 평가로 회계했다. 김종서의 근무지는 pack에 없어 장소를 붙이지 않았다.",
@@ -940,7 +940,7 @@ export const EVENTS = [
     relations: [
       r("JZ_DOEULON", "JO_KIMJONGSEO", "INTELLIGENCE", "warn_of_retaliation", p({ ...BEFORE("1439-05-10") })),
       r("JO_KIMJONGSEO", "GRP_1439_GEOEUL_KIN", "DIPLOMACY", "deescalate_false_rumor", d("R4_group_placeholder", { ...BEFORE("1439-05-10"), note: "pack: 김종서 -> Jurchen actors : DIPLOMATIC_DEESCALATION" })),
-      r("JO_KIMJONGSEO", "JO_SEJONG", "REPORT", "chigye", d("R7_report_on_record", { ...AT("1439-05-10"), note: "pack: 김종서 -> court : REPORT(치계)" }))
+      r("JO_KIMJONGSEO", "JO_SEJONG", "REPORT", "chigye", d("R1_court_recipient", { ...AT("1439-05-10"), note: "pack: 김종서 -> court : REPORT(치계)" }))
     ],
     sourceIds: ["SRC_1439_0510"], embeddedDocumentAuthor: "JO_KIMJONGSEO", documentType: "chigye",
     evidenceSummary: "거을가개가 죽었다는 헛소문이 돌아 그 자손·관련자가 보복을 생각했고, 도을온이 김종서에게 알렸다. 김종서는 소문이 거짓임을 설명해 진정시켰다(치계). 현지 사건 시점은 기사일 이전(미상). 조석강은 기사에 등장하나 역할 미기재.",
@@ -958,7 +958,7 @@ export const EVENTS = [
     relations: [
       ...["JZ_NAEUPDAE", "JZ_MAGI", "JZ_YAOSI", "JZ_RARATO", "JZ_TARONGHAPMAHOL", "JZ_DANARONGHAP"]
         .map((x) => r(x, "ORG_JOSEON_COURT", "INTELLIGENCE", "warn_of_planned_raid", d("R3_who_expansion", { ...BEFORE("1439-06-17"), note: "pack: Jurchen informants -> Joseon(수신자 미특정)" }))),
-      r("JO_SEJONG", "JO_KIMJONGSEO", "POLICY", "instruction", p({ note: "pack: 세종 -> 김종서 : POLICY / INSTRUCTION" }))
+      r("JO_SEJONG", "JO_KIMJONGSEO", "POLICY", "instruction", d("R6_layer_normalize", { note: "pack: 세종 -> 김종서 : POLICY / INSTRUCTION" }))
     ],
     sourceIds: ["SRC_1439_0617"],
     evidenceSummary: "여러 여진인이 침입 계획을 알려 왔고 일부 잠재적 침입자는 설득되어 물러났다고 한다. 정보의 1차 수신자는 pack에 명시되지 않아 '조선 측(미특정)'으로 둔다.",
@@ -1022,7 +1022,7 @@ export const EVENTS = [
     mechanisms: ["royal_order", "fortification", "resettlement", "administrative_reorganization"],
     outcomes: [O("movement", "종성을 수주 강변 쪽으로 이설"), O("fortification", "종성·회령·경원 주변 여러 보 신설"), O("county_established", "다온평에 온성 설치")],
     relations: [
-      r("ORG_JOSEON_COURT", "JO_HWANGBOIN", "COMMAND", "dispatch_inspection_restructure", p({ note: "pack: central government -> 황보인 : INSPECTION / COMMAND" })),
+      r("ORG_JOSEON_COURT", "JO_HWANGBOIN", "COMMAND", "dispatch_inspection_restructure", d("R6_layer_normalize", { note: "pack: central government -> 황보인 : INSPECTION / COMMAND" })),
       r("ORG_JOSEON_COURT", "GRP_1441_SETTLERS", "RESETTLEMENT", "relocate_settlers", d("R4_group_placeholder", { ...UNKNOWN_T, note: "pack: state -> frontier : RESETTLEMENT. 이주 실행 시점 미상." }))
     ],
     sourceIds: ["SRC_1441_0129"], relatedSourceIds: ["SRC_GEO_JONGSEONG"],
@@ -1074,8 +1074,8 @@ export const EVENTS = [
     outcomes: [O("policy_change", "경계 강화, 매를 잡으려는 무단 도강 금지")],
     relations: [
       r("GRP_1442_MING_INTEL", "ORG_JOSEON_COURT", "INTELLIGENCE", "warn_possible_raid", d("R4_group_placeholder", { ...BEFORE("1442-10-22"), note: "pack: external intelligence -> Joseon(수신자 미특정). 수정 전에는 세종으로 연결되어 있었음." })),
-      r("JO_SEJONG", "ORG_PYEONGAN_FIELD", "COMMAND", "defense_alert_and_crossing_ban", p({ note: "pack: 세종 -> frontier commanders : DEFENSE_ORDER / BORDER_CONTROL" })),
-      r("JO_SEJONG", "ORG_HAMGIL_FIELD", "COMMAND", "defense_alert_and_crossing_ban", p())
+      r("JO_SEJONG", "ORG_PYEONGAN_FIELD", "COMMAND", "defense_alert_and_crossing_ban", d("R3_who_expansion", { note: "pack: 세종 -> frontier commanders : DEFENSE_ORDER / BORDER_CONTROL" })),
+      r("JO_SEJONG", "ORG_HAMGIL_FIELD", "COMMAND", "defense_alert_and_crossing_ban", d("R3_who_expansion"))
     ],
     sourceIds: ["SRC_1442_1022"],
     evidenceSummary: "명 변경 군사 측에서 온 정보가 침입 가능성을 경고했다. 평안·함길 감사·지휘관에게 진보 경계를 강화하고 매를 잡으려 강을 무단으로 건너는 것을 금지했다. 범찰과 '이장가의 아들'이 언급된다.",
@@ -1095,11 +1095,11 @@ export const EVENTS = [
     outcomes: [O("victory", "준비된 방어로 공격 격퇴", { reportedBy: JR }), O("reward", "조정이 두 제보자의 공을 크게 인정")],
     relations: [
       r("JZ_BAEMARAGA", "ORG_JOSEON_COURT", "INTELLIGENCE", "advance_warning", p({ ...AT("1443-09-14"), note: "pack: 배마라가 -> Joseon(수신자 미특정). 날짜는 pack EVENT DATE." })),
-      r("JO_HANSEORYONG", "GRP_1443_GARRISONS", "COMMAND", "order_garrisons_prepare", p({ ...RANGE("1443-09-14", "1443-10-05") })),
+      r("JO_HANSEORYONG", "GRP_1443_GARRISONS", "COMMAND", "order_garrisons_prepare", d("R4_group_placeholder", { ...RANGE("1443-09-14", "1443-10-05") })),
       r("JZ_CHANGGORI", "ORG_JOSEON_COURT", "INTELLIGENCE", "day_of_raid_warning", p({ ...RANGE("1443-09-14", "1443-10-05"), note: "침입 당일(일자 미상)" })),
-      r("GRP_1443_GARRISONS", "GRP_1443_UDIGE", "MILITARY_CONFLICT", "repel_raid", p({ ...RANGE("1443-09-14", "1443-10-05"), note: "pack: garrisons -> attackers : DEFENSE" })),
-      r("ORG_JOSEON_COURT", "JZ_BAEMARAGA", "REWARD", "reward_informant", p({ ...AT("1443-10-05"), causalStatus: "explicit", note: "pack: state -> informants : REWARD('contributions major')" })),
-      r("ORG_JOSEON_COURT", "JZ_CHANGGORI", "REWARD", "reward_informant", p({ ...AT("1443-10-05"), causalStatus: "explicit" }))
+      r("GRP_1443_GARRISONS", "GRP_1443_UDIGE", "MILITARY_CONFLICT", "repel_raid", d("R4_group_placeholder", { ...RANGE("1443-09-14", "1443-10-05"), note: "pack: garrisons -> attackers : DEFENSE" })),
+      r("ORG_JOSEON_COURT", "JZ_BAEMARAGA", "REWARD", "reward_informant", d("R3_who_expansion", { ...AT("1443-10-05"), causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1443_0914_1005:WHAT:L1061", quote: "Court judged both informants' contributions major." }, note: "pack: state -> informants : REWARD('contributions major')" })),
+      r("ORG_JOSEON_COURT", "JZ_CHANGGORI", "REWARD", "reward_informant", d("R3_who_expansion", { ...AT("1443-10-05"), causalStatus: "EXPLICIT_CAUSAL", causalEvidence: { locator: "pack_v1:E1443_0914_1005:WHAT:L1061", quote: "Court judged both informants' contributions major." } }))
     ],
     sourceIds: ["SRC_1443_1005"],
     evidenceSummary: "배마라가가 우디거 1,000여 기가 침입하러 떠났다고 미리 알렸고 한서룡이 진보들을 대비시켰다. 침입 당일 창고리가 다시 경보했다. 조선군은 대비해 공격을 물리쳤고, 조정은 두 정보원의 공을 크다고 판단했다. 김효성이 기사에 등장하나 역할 미기재(이전 김효성과 동일인 여부 미확인).",
@@ -1119,7 +1119,7 @@ export const EVENTS = [
     outcomes: [O("decision", "성·행정 요청은 수용, 공격 제안은 승인 회피(비확전)")],
     relations: [
       r("JZ_DONGSOROGAMU", "JO_SEJONG", "DIPLOMACY", "propose_joint_attack_and_walls", d("R1_court_recipient", { ...BEFORE("1443-10-23"), note: "pack: 동소로가무 -> court : MILITARY_PROPOSAL" })),
-      r("JO_SEJONG", "JZ_DONGSOROGAMU", "DIPLOMACY", "limited_acceptance_non_escalation", d("R1_court_recipient", { note: "pack: court -> 동소로가무 : LIMITED_ACCEPTANCE / NON_ESCALATION(예조·의정부 등장)" }))
+      r("ORG_JOSEON_COURT", "JZ_DONGSOROGAMU", "DIPLOMACY", "limited_acceptance_non_escalation", p({ note: "pack: court -> 동소로가무 : LIMITED_ACCEPTANCE / NON_ESCALATION(예조·의정부 등장). 주체 'court'는 R1(수신자 규칙) 대상이 아니므로 ORG_JOSEON_COURT(2차 감사에서 교정)." }))
     ],
     sourceIds: ["SRC_1443_1023"],
     evidenceSummary: "동소로가무가 성 쌓기와 사신 규제를 요청하고, 오진 군사와 여진 동맹이 함께 구주 우디거를 치자고 제안했다. 조정(예조·의정부 등장)은 성·행정 요청은 받아들이되 공격 제안은 승인하지 않았다.",
@@ -1135,7 +1135,7 @@ export const EVENTS = [
     what: [W("transfer", "수군 진 이설·망대 재축·5인 망보·연기·화포 신호선 개선", "JO_HWANGBOIN", "JO_SEJONG")],
     mechanisms: ["proposal", "signal", "fortification"],
     outcomes: [O("policy_change", "망대 5인 배치, 연기·화포 신호 체계 개선안")],
-    relations: [r("JO_HWANGBOIN", "JO_SEJONG", "FORTIFICATION", "propose_signal_system", p({ note: "pack: 황보인 -> 세종 : DEFENSE_ADVICE" }))],
+    relations: [r("JO_HWANGBOIN", "JO_SEJONG", "FORTIFICATION", "propose_signal_system", d("R6_layer_normalize", { note: "pack: 황보인 -> 세종 : DEFENSE_ADVICE" }))],
     sourceIds: ["SRC_1445_0519"],
     evidenceSummary: "황보인이 수군 진을 옮기고 망대를 다시 지으며, 망보에 군사 5명을 두고 연기·화포 신호선을 개선하자고 건의했다.",
     storyWeight: 1
@@ -1149,8 +1149,8 @@ export const EVENTS = [
     mechanisms: ["royal_order", "defense"],
     outcomes: [O("policy_change", "방어 장치의 효과와 우호·귀순 여진 피해 위험을 저울질")],
     relations: [
-      r("JO_SEJONG", "ORG_PYEONGAN_FIELD", "FORTIFICATION", "defense_reform_order", p({ note: "pack: 세종 -> frontier commanders : DEFENSE_REFORM" })),
-      r("JO_SEJONG", "ORG_HAMGIL_FIELD", "FORTIFICATION", "defense_reform_order", p())
+      r("JO_SEJONG", "ORG_PYEONGAN_FIELD", "FORTIFICATION", "defense_reform_order", d("R3_who_expansion", { note: "pack: 세종 -> frontier commanders : DEFENSE_REFORM" })),
+      r("JO_SEJONG", "ORG_HAMGIL_FIELD", "FORTIFICATION", "defense_reform_order", d("R3_who_expansion"))
     ],
     sourceIds: ["SRC_1445_0806"],
     evidenceSummary: "기존 순찰·망보 체계가 해이해질 위험을 지적하고, 앞선 가시 방어 실패 직전 사례를 들며 마름쇠·함정 방어를 논의했다. 그런 장치가 우호·귀순 여진을 다치게 할 수 있다고도 우려했다.",
@@ -1165,7 +1165,7 @@ export const EVENTS = [
     mechanisms: ["royal_order", "diplomacy"],
     outcomes: [O("policy_change", "회유와 통제를 겸한 오도리 정책")],
     relations: [
-      r("JO_SEJONG", "ORG_HAMGIL_DOJEOLJESA", "COMMAND", "instruct_odori_policy", p({ note: "pack: 세종 -> frontier commander : DIPLOMATIC_POLICY" })),
+      r("JO_SEJONG", "ORG_HAMGIL_DOJEOLJESA", "COMMAND", "instruct_odori_policy", d("R3_who_expansion", { note: "pack: 세종 -> frontier commander : DIPLOMATIC_POLICY" })),
       r("ORG_JOSEON_COURT", "JZ_DONGSOROGAMU", "DIPLOMACY", "conciliation_and_control", d("R3_who_expansion", { ...UNKNOWN_T, note: "pack: state -> Odori groups : CONCILIATION / CONTROL. 실행 시점 미상." }))
     ],
     sourceIds: ["SRC_1445_1027"],
@@ -1191,7 +1191,7 @@ export const EVENTS = [
     ],
     relations: [
       r("GRP_1446_MUCHANG_RAIDERS", "GRP_1446_MUCHANG_VICTIMS", "MILITARY_CONFLICT", "raid", d("R4_group_placeholder", { ...BEFORE("1446-04-20"), note: "pack: raiders -> Muchang : MILITARY_ATTACK" })),
-      r("JO_BAECHAN", "GRP_1446_MUCHANG_RAIDERS", "MILITARY_ACTION", "pursue_across_river_failed", p({ ...BEFORE("1446-04-20") }))
+      r("JO_BAECHAN", "GRP_1446_MUCHANG_RAIDERS", "MILITARY_ACTION", "pursue_across_river_failed", d("R4_group_placeholder", { ...BEFORE("1446-04-20") }))
     ],
     sourceIds: ["SRC_1446_0420"],
     evidenceSummary: "50여 명이 무창을 쳐 5명을 죽이고 17명을 잡아가고 말 4·소 8을 빼앗았다. 무창 수령 배찬이 강을 건너 추격했으나 피랍민을 되찾지 못했다. 실록은 실패를 배찬과 도 지휘관 김자옹의 군령·봉수 경계 해이 탓으로 명시한다. 이 책임 귀속은 편찬자 서술이라 관계가 아닌 결과로 기록(D21). 피습 시점은 기사일 이전(미상).",
@@ -1209,7 +1209,7 @@ export const EVENTS = [
     mechanisms: ["labor_mobilization", "fortification"],
     outcomes: [O("labor", "평안도 백성 동원"), O("fortification", "성벽·문·옹성·봉수대(공사 2/15~3/15)")],
     relations: [r("ORG_JOSEON_COURT", "GRP_1447_PYEONGAN_LABOR", "LABOR_MOBILIZATION", "mobilize_wall_labor",
-      p({ ...RANGE("1447-02-15", "1447-03-15", "duration"), note: "pack: state -> population : LABOR_MOBILIZATION. 기사일과 별도로 공사 기간을 기록." }))],
+      d("R4_group_placeholder", { ...RANGE("1447-02-15", "1447-03-15", "duration"), note: "pack: state -> population : LABOR_MOBILIZATION. 기사일과 별도로 공사 기간을 기록." }))],
     sourceIds: ["SRC_1447_0107"],
     evidenceSummary: "황보인 관련 변경 축성. 한 구간에 평안도 백성 5,740명, 다른 구간에 400명 동원. 성벽·문·옹성·봉수대. 기사일(1/7)과 공사 기간(2/15~3/15)을 따로 기록.",
     storyWeight: 1
@@ -1237,8 +1237,8 @@ export const EVENTS = [
     mechanisms: ["labor_mobilization", "fortification"],
     outcomes: [O("fortification", "회령·삼수 일대 석성·토성(길이·인원 기록)"), O("labor", "9,526명 동원")],
     relations: [
-      r("ORG_JOSEON_COURT", "GRP_1447_HAMGIL_LABOR", "LABOR_MOBILIZATION", "mobilize_wall_labor", p({ ...BEFORE("1447-07-08"), note: "pack: state -> civilian labor : LABOR_MOBILIZATION" })),
-      r("ORG_JOSEON_COURT", "GRP_1447_GAPSAN_SAMSU_LABOR", "LABOR_MOBILIZATION", "mobilize_wall_labor", p({ ...BEFORE("1447-07-08") }))
+      r("ORG_JOSEON_COURT", "GRP_1447_HAMGIL_LABOR", "LABOR_MOBILIZATION", "mobilize_wall_labor", d("R4_group_placeholder", { ...BEFORE("1447-07-08"), note: "pack: state -> civilian labor : LABOR_MOBILIZATION" })),
+      r("ORG_JOSEON_COURT", "GRP_1447_GAPSAN_SAMSU_LABOR", "LABOR_MOBILIZATION", "mobilize_wall_labor", d("R4_group_placeholder", { ...BEFORE("1447-07-08") }))
     ],
     sourceIds: ["SRC_1447_0708"],
     evidenceSummary: "회령·삼수 일대에 큰 석성·토성을 쌓았다. 함길도 백성 8,526명, 갑산·삼수 백성 1,000명. 공사 시점은 기사일 이전(미상).",

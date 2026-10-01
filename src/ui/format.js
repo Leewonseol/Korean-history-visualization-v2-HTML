@@ -1,6 +1,6 @@
 /* 패널 공통 렌더링 헬퍼 */
 import { CERTAINTY, LAYERS, LEVELS, SOURCE_TYPES, SOURCE_LEVELS, VERIFICATION, CAUSAL_STATUS, DOCUMENT_TYPES,
-  PROVENANCE, EVIDENCE_STATUS, DERIVATION_RULES, DIRECTION_POLICY, SOURCE_USAGE } from "../data/vocab.js";
+  PROVENANCE, EVIDENCE_STATUS, DERIVATION_RULES, DIRECTION_POLICY, SOURCE_USAGE, EVIDENCE_CLASS, EVIDENCE_CLASS_ORDER, evidenceClassOf } from "../data/vocab.js";
 import { formatDate, formatRange } from "../model/dates.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -25,7 +25,15 @@ export function eventDateLabel(e) {
 }
 export function evidenceBadge(prov) {
   const g = PROVENANCE[prov] ? PROVENANCE[prov].group : "unknown";
-  return `<span class="ev-badge evb-${esc(g)}" title="${esc(EVIDENCE_STATUS[g])}">${esc(PROVENANCE[prov] ? PROVENANCE[prov].label : prov)}</span>`;
+  const cls = evidenceClassOf(prov);
+  return `<span class="ev-badge evb-${esc(g)} evc-${esc(cls)}" title="${esc(EVIDENCE_CLASS[cls] ? EVIDENCE_CLASS[cls].label : EVIDENCE_STATUS[g])}">${esc(EVIDENCE_CLASS[cls] ? EVIDENCE_CLASS[cls].short : prov)}</span>`;
+}
+export function classBadge(cls) {
+  return `<span class="ev-badge evc-${esc(cls)}" title="${esc(EVIDENCE_CLASS[cls] ? EVIDENCE_CLASS[cls].label : cls)}">${esc(EVIDENCE_CLASS[cls] ? EVIDENCE_CLASS[cls].short : cls)}</span>`;
+}
+/** '직접 사료 근거 n · 규칙 파생 n · legacy n · 해석 n' — 수치는 호출하는 쪽에서 계산해 넘긴다(하드코딩 금지) */
+export function evidenceClassSummary(counts) {
+  return EVIDENCE_CLASS_ORDER.map((k) => `<span class="evc-count evc-${k}">${esc(EVIDENCE_CLASS[k].label)} <b>${counts[k] || 0}</b></span>`).join(" · ");
 }
 export function certBadge(c) {
   const x = CERTAINTY[c] || { badge: c, label: c };
@@ -42,6 +50,17 @@ export function sourceLink(idx, id) {
   return `<a href="${esc(s.url)}" target="_blank" rel="noopener" class="src-link">${esc(s.title)}</a>
     <span class="src-meta">${esc(SOURCE_TYPES[s.sourceType])} · ${esc(SOURCE_LEVELS[s.sourceLevel])}${doc} · <span class="verif verif-${esc(s.verification)}">${esc(VERIFICATION[s.verification] || "")}</span>${u ? ` · <span class="usage usage-${esc(u.status)}" title="${esc(u.message)}">${esc(SOURCE_USAGE[u.status])}</span>` : ""}</span>`;
 }
+// pack 원문 추적(trace): 원문 줄 → 규칙
+function traceHtml(idx, c) {
+  const t = idx.traceById && idx.traceById[c.id];
+  if (!t) return "";
+  return ` <details class="trace"><summary>원문 추적</summary><div class="small">
+    <code>${esc(t.locator)}</code><br>“${esc(t.quote)}”<br>원문 ${esc(t.sourceSubject)} → ${esc(t.sourceObject)}
+    ⇒ 규칙 ${t.rules.length ? t.rules.map((r) => `<code>${esc(r)}</code>`).join(" ") : "<b>없음(DIRECT)</b>"}
+    ${t.members.length ? `<br>구성원 근거: ${t.members.map((m) => `“${esc(m.quote)}”`).join(", ")}` : ""}
+    ${t.flags.length ? `<br>검토 표시: ${t.flags.map(esc).join(", ")}` : ""}</div></details>`;
+}
+
 // 관계 한 줄: Layer · Direction · Source · Evidence status · Certainty · Causal status (+ 시각 범위, 경로 대상 여부)
 export function relationLine(idx, c, opts = {}) {
   const arrow = c.direction === "undirected" ? "↔" : "→";
@@ -53,9 +72,9 @@ export function relationLine(idx, c, opts = {}) {
     ${layerChip(c.layer)} <code>${esc(c.relationType)}</code>
     <div class="rel-meta">
       <span class="k">방향</span> ${c.direction === "undirected" ? "양방향(pack 근거)" : "방향 있음"}
-      · <span class="k">근거 상태</span> ${evidenceBadge(c.provenance)}${c.derivationRule ? ` <code title="${esc(DERIVATION_RULES[c.derivationRule])}">${esc(c.derivationRule)}</code>` : ""}
+      · <span class="k">근거 상태</span> ${evidenceBadge(c.provenance)}${c.derivationRule ? ` <code title="${esc(DERIVATION_RULES[c.derivationRule])}">${esc(c.derivationRule)}</code>` : ""}${traceHtml(idx, c)}
       · <span class="k">확실성</span> ${certBadge(c.certainty)}
-      · <span class="k">인과</span> <span class="causal" title="${esc(CAUSAL_STATUS[c.causalStatus] || "")}">${esc(c.causalStatus)}</span>
+      · <span class="k">인과</span> <span class="causal" title="${esc(CAUSAL_STATUS[c.causalStatus] || "")}${c.causalEvidence ? ` — 근거: ${esc(c.causalEvidence.quote)}` : ""}">${esc(c.causalStatus)}</span>
       ${c.pathEligible ? "" : ` · <span class="about-tag" title="'~에 관한' 관계: 경로·중심성 계산에서 제외">경로 제외</span>`}
       <br><span class="k">사료</span> ${srcs}
     </div>

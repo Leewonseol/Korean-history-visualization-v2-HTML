@@ -4,7 +4,7 @@
    사용법:
      python3 -m http.server 8000 &          # 저장소 루트에서
      PLAYWRIGHT_MODULE=$(npm root -g)/playwright/index.js \
-     CYTOSCAPE_FILE=/path/to/cytoscape.min.js  \   # (선택) CDN 차단 환경에서 로컬 파일로 대체
+     (Cytoscape는 production과 같은 vendor 파일 vendor/cytoscape/<버전>/cytoscape.min.js를 그대로 쓴다 — 대체 파일 주입 없음)
      node tools/e2e.mjs [http://localhost:8000/] [screenshot.png]
    ========================================================================== */
 import fs from "node:fs";
@@ -18,9 +18,11 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 const consoleErrors = [];
 page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text()));
 page.on("pageerror", (e) => consoleErrors.push(String(e)));
-if (process.env.CYTOSCAPE_FILE) {
-  await page.route(/cytoscape\.min\.js$/, (r) => r.fulfill({ body: fs.readFileSync(process.env.CYTOSCAPE_FILE), contentType: "application/javascript" }));
-}
+// production과 같은 artifact인지 확인: 외부 CDN 요청이 있으면 실패, 로드된 Cytoscape 버전은 MANIFEST와 같아야 함
+const MANIFEST = JSON.parse(fs.readFileSync(new globalThis.URL("../vendor/cytoscape/MANIFEST.json", import.meta.url), "utf8"));
+const externalRequests = [];
+page.on("request", (r) => { if (!/^https?:\/\/(localhost|127\.0\.0\.1)/.test(r.url()) && !r.url().startsWith("data:")) externalRequests.push(r.url()); });
+if (process.env.CYTOSCAPE_FILE) throw new Error("CYTOSCAPE_FILE 대체는 더 이상 지원하지 않음 — vendor 파일로 production과 같은 artifact를 테스트한다");
 await page.goto(URL);
 await page.waitForFunction(() => window.__app);
 
@@ -32,7 +34,18 @@ const contactLayers = () => app(() => [...new Set(window.__app.last().displayCon
 
 /* 1. 로드 · 검증 */
 check("콘솔 오류 없음", consoleErrors.length === 0, consoleErrors.join(" | "));
-check("validateData 배지 통과", (await page.textContent("#validationBadge")).includes("통과"));
+check("validateData 배지 통과 · 예상된 경고만", /통과 · 예상된 경고 \d+$/.test((await page.textContent("#validationBadge")).trim()), await page.textContent("#validationBadge"));
+check("Cytoscape 버전 = vendor MANIFEST(production artifact)", (await app(() => window.cytoscape && window.cytoscape.version)) === MANIFEST.version, await app(() => window.cytoscape && window.cytoscape.version));
+check("외부 CDN 요청 없음", externalRequests.length === 0, externalRequests.join(", "));
+const headerClass = await app(() => {
+  const { countByClass } = window.__app;
+  return countByClass(window.__app.idx.contacts);
+});
+const covText = await page.textContent("#coverageNote");
+check("상단: 근거 등급을 분리해 표시(직접·규칙 파생·legacy·해석, 데이터에서 계산한 수)",
+  covText.includes(`직접 사료 근거 ${headerClass.DIRECT}`) && covText.includes(`규칙 파생(R1~R7) ${headerClass.NORMALIZED}`) && covText.includes(`legacy(v2 이관·시드) ${headerClass.LEGACY}`) && covText.includes(`편집자 해석 ${headerClass.INTERPRETATION}`), covText.slice(0, 200));
+check("상단: '사료 없는 관계 0'을 단독 headline으로 쓰지 않음", !/사료 없는 (관계|relation)\s*0/.test(covText));
+check("상단: 부분 조사 연도 1432·1449 표기", covText.includes("1432(1432-12-09~)") && covText.includes("1449(~1449-07-07)"));
 
 /* 2. 타임라인: 하드코딩 없는 slider max, 연도 jump, 재생 */
 const nEvents = await app(() => window.__app.idx.events.length);
@@ -81,6 +94,7 @@ check("'검증만' 다시 켜면 legacy·해석 제외", JSON.stringify(await ev
 
 /* 3c. coverage: 1444는 '미조사/미수록', '사건 없음' 표기 없음 */
 const b44 = await page.$('#yearJumps button[data-year="1444"]');
+check("1432 연도 버튼: 부분 조사 표시", (await page.textContent('#yearJumps button[data-year="1432"]')).includes("부분"));
 check("1444 연도 버튼: 비활성 + 미수록 표시", (await b44.isDisabled()) && (await b44.textContent()).includes("미수록") && (await b44.getAttribute("title")).includes("현재 검증팩에서 미조사/미수록"));
 check("타임라인 strip에 미수록 구간 표시", (await page.$$("#eventStrip .strip-nc")).length === 1);
 check("기간 선택에 1444 미수록 표기", (await page.textContent('#periodFrom option[value="1444"]')).includes("미조사/미수록"));
@@ -100,10 +114,13 @@ const duman = await app(() => window.__app.last().displayContacts.map((c) => c.t
 check("theater 필터(DUMAN만) → DUMAN contact만", duman.length > 0 && duman.every((t) => t.includes("DUMAN")), `${duman.length} contacts`);
 for (const t of ["CENTRAL", "AMNOK", "MING", "UNSPECIFIED"]) await page.check(`#filterTheater input[value="${t}"]`);
 
-/* 6. temporal path: 시간 역행 금지, strict/possible, 경로 플래그 */
+/* 6. temporal path: 시간 역행 금지, CERTAIN_ORDER / TEMPORALLY_NOT_EXCLUDED, 경로 플래그 */
 await page.click('.tab[data-tab="analysis"]');
 const note = await page.textContent("#tab-analysis .note");
-check("분석 패널: strict 판정·제외 수·지표 데이터셋 표시", note.includes("strict") && /시각 불확실\s*\d+/.test(note) && note.includes("pack v1"));
+check("분석 패널: CERTAIN_ORDER 판정·포함/제외 수·근거 등급·동일성 미해결 수", note.includes("CERTAIN_ORDER") && /포함\s*\d+/.test(note) && /시각 불확실\s*\d+/.test(note)
+  && note.includes("직접 사료 근거") && /동일성 미해결 노드\(identity unresolved node count\):\s*\d+/.test(note), note.replace(/\s+/g, " ").slice(0, 160));
+const missTxt = await page.textContent("#tab-analysis");
+check("분석 패널: missingness(layer·근거 등급·relation type·인물별 제외)와 병합 민감도", missTxt.includes("시간 불확실성 missingness") && missTxt.includes("relation type") && missTxt.includes("인물(제외 많은 순)") && missTxt.includes("동일성 병합 민감도"));
 await page.selectOption("#pathFrom", "JO_SEJONG");
 await page.selectOption("#pathTo", "JO_LEESUNMONG");
 await page.click("#btnPath");
@@ -128,17 +145,18 @@ await page.selectOption("#pathTo", "JO_LEESUNMONG");
 await page.click("#btnPath");
 const p2 = await app(() => window.__app.state.pathUI.result);
 check("사건(1432-12-11) 출발 경로 → 이순몽", !!p2 && p2.steps[0].time >= "1432-12-11", p2 ? p2.steps.map((s) => `${s.from}->${s.to}@${s.time}`).join(" ") : "none");
-// 도을온 제보(1439-05-10 기사, 제보 시점은 기사일 이전 미상) → 세종: strict 경로 없음, possible은 UNCERTAIN
+// 도을온 제보(1439-05-10 기사, 제보 시점은 기사일 이전 미상) → 세종: CERTAIN_ORDER 경로 없음, TEMPORALLY_NOT_EXCLUDED는 UNCERTAIN
 await page.selectOption("#pathFrom", "JZ_DOEULON");
 await page.selectOption("#pathTo", "JO_SEJONG");
-await page.selectOption("#pathMode", "strict");
+await page.selectOption("#pathMode", "CERTAIN_ORDER");
 await page.click("#btnPath");
-check("시점 미상 제보는 strict 경로를 만들지 않음(도을온→세종)", (await app(() => window.__app.state.pathUI.result)) === null);
-await page.selectOption("#pathMode", "possible");
+check("시점 미상 제보는 CERTAIN_ORDER 경로를 만들지 않음(도을온→세종)", (await app(() => window.__app.state.pathUI.result)) === null);
+await page.selectOption("#pathMode", "TEMPORALLY_NOT_EXCLUDED");
 await page.click("#btnPath");
 const p3 = await app(() => window.__app.state.pathUI.result);
-check("possible 모드: 경로를 UNCERTAIN으로 표시", !!p3 && p3.flag === "UNCERTAIN" && p3.ok, p3 ? p3.flag : "none");
-await page.selectOption("#pathMode", "strict");
+check("TEMPORALLY_NOT_EXCLUDED: 경로를 UNCERTAIN으로 표시", !!p3 && p3.flag === "UNCERTAIN" && p3.ok, p3 ? p3.flag : "none");
+check("TEMPORALLY_NOT_EXCLUDED: '실제 순서를 입증하지 않음' 안내", (await page.textContent("#tab-analysis")).includes("실제로 이 순서로 흘렀음을 입증하지 않습니다"));
+await page.selectOption("#pathMode", "CERTAIN_ORDER");
 // 현장 보고 경로: 최윤덕 → 박호문 → 세종 (1433-05-07)
 await page.selectOption("#pathFrom", "JO_PARKHOMUN");
 await page.selectOption("#pathTo", "JO_SEJONG");
@@ -149,12 +167,13 @@ await page.click("#btnPathClear");
 await page.selectOption("#loopAnchor", "JO_SEJONG");
 await page.click("#btnLoops");
 const loops = await app(() => window.__app.state.pathUI.loops.map((l) => ({ via: l.via, flag: l.flag, ok: l.steps.every((s, i) => i === 0 || s.time >= l.steps[i - 1].time) })));
-check("세종 피드백 루프(최윤덕 경유) 존재·시간 순행·strict 플래그", loops.some((l) => l.via === "JO_CHOEYUNDEOK") && loops.every((l) => l.ok && l.flag !== "UNCERTAIN"), loops.map((l) => `${l.via}:${l.flag}`).join(","));
+check("세종 피드백 루프(최윤덕 경유) 존재·시간 순행·CERTAIN_ORDER 플래그", loops.some((l) => l.via === "JO_CHOEYUNDEOK") && loops.every((l) => l.ok && l.flag !== "UNCERTAIN"), loops.map((l) => `${l.via}:${l.flag}`).join(","));
 
 /* 7. centrality trajectory가 선택 기간에 따라 갱신 */
 await app(() => document.querySelector('[data-person="JO_SEJONG"]').click());
 await page.click('.tab[data-tab="analysis"]');
 const yearsAll = await page.$$eval("#tab-analysis .chart", (cs) => cs[0].querySelectorAll(".pt").length);
+check("연도별 그래프에 조사 범위 띠(PARTIAL·NONE 구분)", (await page.$$("#tab-analysis .chart rect.cov-PARTIAL")).length > 0 && (await page.$$("#tab-analysis .chart rect.cov-NONE")).length > 0);
 await page.selectOption("#periodFrom", "1433");
 await page.selectOption("#periodTo", "1434");
 const yearsSub = await page.$$eval("#tab-analysis .chart", (cs) => cs[0].querySelectorAll(".pt").length);
@@ -193,7 +212,7 @@ check("'기사일 이전' 사건 날짜를 범위로 표시", (await page.textCo
 /* 8c. 동명이인 미해결 노드 */
 await app(() => window.__app.selectPerson("JO_HONGSASEOK_1437"));
 const ptxt = await page.textContent("#tab-person");
-check("인물 패널: 홍사석(1437) unresolved_homonym · 동일인 가능성 · 병합 안 함", ptxt.includes("unresolved_homonym") && ptxt.includes("동일인 가능성") && ptxt.includes("병합하지 않음"));
+check("인물 패널: 홍사석(1437) UNRESOLVED_DISTINCT · 동일인 가능성 · 병합 안 함", ptxt.includes("UNRESOLVED_DISTINCT") && ptxt.includes("동일인 가능성") && ptxt.includes("병합하지 않음"));
 
 /* 9. 지표 노드 크기 · 스토리 · 장소 */
 await app(() => window.__app.setCursor(window.__app.idx.events.length - 1));   // 전체 기간 누적 상태에서
@@ -206,9 +225,11 @@ check("장소 노드 overlay", (await app(() => window.__app.net.cy.nodes(".plac
 await page.uncheck("#showPlaces");
 await page.click("#btnStoryMode");
 check("스토리 모드 표시", await page.isVisible("#storyOverlay"));
-check("스토리 문장마다 근거 배지·사료 id", (await page.$$("#storyNarration .story-statements li .ev-badge")).length === (await page.$$("#storyNarration .story-statements li")).length);
+check("스토리 문장마다 근거 배지·사료 id", (await page.$$("#storyNarration .story-statements > li .story-src .ev-badge")).length === (await page.$$("#storyNarration .story-statements > li")).length);
 await page.click("#storyNext");
-check("스토리: legacy 문장은 기본 숨김(숨김 수 안내)", (await page.textContent("#storyNarration")).includes("숨김"));
+check("스토리: legacy claim은 기본 숨김(숨김 수 안내)", (await page.textContent("#storyNarration")).includes("숨김"));
+await page.click("#storyPrev");
+check("스토리: 한 문장 안을 claim 단위(사실·추론)로 나누어 근거 등급 표시", (await page.$$("#storyNarration .story-claims li .ev-badge")).length >= 3);
 await page.click("#storyExit");
 
 check("최종 콘솔 오류 없음", consoleErrors.length === 0, consoleErrors.join(" | "));

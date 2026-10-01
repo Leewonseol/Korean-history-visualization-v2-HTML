@@ -5,12 +5,15 @@
    2) src/app.js부터 import 그래프를 따라가며 모든 상대 경로 모듈이 존재
    3) 각 모듈의 named import가 실제 export에 있는지(정적 검사 + DOM 없는 모듈은 실제 import)
    4) 모든 .js/.mjs 문법 검사(node --check)
+   5) Cytoscape 버전 parity: package.json 고정 버전 = vendor MANIFEST = 파일 내장 버전 = index.html 경로,
+      sha256 일치 — production과 E2E는 같은 vendor 파일을 쓴다(CDN 미사용)
    사용법: node tools/build-check.mjs
    ========================================================================== */
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import crypto from "node:crypto";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
 let fails = 0;
@@ -22,7 +25,22 @@ const refs = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
 const local = refs.filter((r) => !/^https?:|^#|^mailto:/.test(r));
 check("index.html 로컬 참조 파일 존재", local.every((r) => fs.existsSync(path.join(ROOT, r))), local.join(", "));
 const ext = refs.filter((r) => /^https?:/.test(r) && /\.js$/.test(r));
-check("외부 스크립트는 고정 버전 CDN", ext.every((r) => /cdnjs\.cloudflare\.com\/ajax\/libs\/[^/]+\/\d+\.\d+\.\d+\//.test(r)), ext.join(", "));
+check("외부 CDN 스크립트 없음(배포·E2E가 같은 vendor 파일 사용)", ext.length === 0, ext.join(", "));
+
+/* 5. Cytoscape parity */
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+const man = JSON.parse(fs.readFileSync(path.join(ROOT, "vendor/cytoscape/MANIFEST.json"), "utf8"));
+const pinned = pkg.dependencies && pkg.dependencies.cytoscape;
+check("package.json cytoscape 버전 고정(정확한 버전)", /^\d+\.\d+\.\d+$/.test(pinned || ""), pinned);
+check("package.json 버전 = vendor MANIFEST 버전", pinned === man.version, `${pinned} vs ${man.version}`);
+const cyRef = refs.find((r) => /cytoscape/.test(r));
+check("index.html이 MANIFEST의 vendor 파일을 로드", cyRef === man.file, cyRef);
+const cyBuf = fs.readFileSync(path.join(ROOT, man.file));
+const sha = crypto.createHash("sha256").update(cyBuf).digest("hex");
+check("vendor 파일 sha256 = MANIFEST", sha === man.sha256, sha);
+const embedded = (/version="(\d+\.\d+\.\d+)"/.exec(cyBuf.toString("utf8")) || [])[1];
+check("vendor 파일 내장 버전 = 고정 버전", embedded === pinned, `${embedded} vs ${pinned}`);
+check("Cytoscape 라이선스 동봉", fs.existsSync(path.join(path.dirname(path.join(ROOT, man.file)), "LICENSE")));
 check("진입 모듈 type=module", /<script[^>]+type="module"[^>]+src="src\/app\.js"/.test(html));
 
 /* 2~3. import 그래프 */

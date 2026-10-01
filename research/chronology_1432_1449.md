@@ -36,6 +36,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1432 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY` · 범위 1432-12-09~
+- Scope: `PARTIAL` — 연도의 일부 기간만 조사 범위 **⚠ 부분 조사 연도(1432-12-09~): 사건·관계 수를 FULL 연도와 단순 비교하지 말 것.**
 - Sources: `SRC_1432_1209`, `SRC_1432_1211`, `SRC_1432_1221`
 - Note: 작업 범위가 1432-12-09에서 시작. 그 이전은 범위 밖.
 
@@ -71,6 +72,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1433 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1433_0215`, `SRC_1433_0226`, `SRC_1433_0307`, `SRC_1433_0325`, `SRC_1433_0507`, `SRC_1433_0516A`, `SRC_1433_0516B`, `SRC_1433_0517`, `SRC_1433_0610`, `SRC_1433_08L10`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -159,6 +161,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1434 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1434_0803`, `SRC_1434_1024` · 지리지 `SRC_GEO_GYEONGWON`, `SRC_GEO_HOERYEONG`, `SRC_GEO_JONGSEONG`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -217,6 +220,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1435 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1435_0118`, `SRC_1435_0312`, `SRC_1435_0408`, `SRC_1435_0719`, `SRC_1435_0726`, `SRC_1435_0918` · 지리지 `SRC_GEO_JONGSEONG`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -283,6 +287,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1436 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1436_06L19`, `SRC_1436_1101`, `SRC_1436_1127`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -313,6 +318,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1437 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1437_0611`, `SRC_1437_0820`, `SRC_1437_0914`, `SRC_1437_0922`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -348,6 +354,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1438 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1438_0729`
 - Note: 1438-08-08 기사는 최초 anchor 목록에만 있고 pack v1에 없음(legacy_anchor_seed).
 
@@ -377,6 +384,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1439 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1439_0510`, `SRC_1439_0617`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -403,6 +411,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1440 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1440_0117`, `SRC_1440_0407`, `SRC_1440_1126` · 지리지 `SRC_GEO_JONGSEONG`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -433,6 +442,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1441 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1441_0129`, `SRC_1441_0519` · 지리지 `SRC_GEO_JONGSEONG`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -462,6 +472,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1442 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1442_1022` · 지리지 `SRC_GEO_GYEONGWON`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -487,6 +498,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1443 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1443_1005`, `SRC_1443_1023`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -513,6 +525,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1444 -->
 - Coverage: `NOT_COVERED` — pack v1에 검증 기사 미수록(미조사) — '사건 없음'이 아님
+- Scope: `NONE` — 조사·수록 없음(NA — 0이 아님) **⚠ NA — 0이 아님.**
 - Sources: 없음(pack v1 미제공)
 - Note: pack v1에 현재 검증 기사가 제공되지 않음. 이 연도는 미조사/미수록 상태이며, 해당 연도에 관련 사건이 없었다는 뜻이 아님.
 <!-- /GENERATED:Y1444 -->
@@ -527,6 +540,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1445 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1445_0519`, `SRC_1445_0806`, `SRC_1445_1027`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -557,6 +571,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1446 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1446_0420`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -578,6 +593,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1447 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1447_0107`, `SRC_1447_04L10`, `SRC_1447_0708`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -608,6 +624,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1448 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY`
+- Scope: `FULL` — 연도 전체가 조사 기간 안(기사는 seed — 전수 아님)
 - Sources: `SRC_1448_0307`
 - Note: pack v1 검증 기사만 수록. 이 연도의 전체 사건 목록이 아님.
 
@@ -629,6 +646,7 @@ pack v1 사건 안에서도 v2에서만 온 관계는 relation 단위로 `inheri
 
 <!-- GENERATED:Y1449 -->
 - Coverage: `VERIFIED_WITH_EVENTS` — pack v1 검증 기사·사건 있음(전수 아님) · completeness `SEED_ONLY` · 범위 ~1449-07-07
+- Scope: `PARTIAL` — 연도의 일부 기간만 조사 범위 **⚠ 부분 조사 연도(~1449-07-07): 사건·관계 수를 FULL 연도와 단순 비교하지 말 것.**
 - Sources: `SRC_1449_0707` · 지리지 `SRC_GEO_BURYEONG`
 - Note: 작업 범위가 1449-07-07에서 끝남. 이 날짜를 북방 문제의 해결 시점으로 보지 않음.
 

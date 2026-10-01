@@ -28,7 +28,8 @@ export function createTimeline(idx, state, setCursor) {
       yearBtns.push(`<button type="button" class="not-covered cov-${cov.coverageStatus}" data-year="${y}" disabled
         title="${y}: ${cov.coverageStatus === "NOT_COVERED" ? NOT_COVERED_LABEL : COVERAGE_STATUS[cov.coverageStatus]} — ${cov.note.replace(/"/g, "'")}">${y}<small>${cov.coverageStatus === "NOT_COVERED" ? " 미수록" : ""}</small></button>`);
     } else {
-      yearBtns.push(`<button type="button" class="cov-${cov.coverageStatus}" data-year="${y}" data-idx="${first}" title="${y}: ${COVERAGE_STATUS[cov.coverageStatus]}">${y}</button>`);
+      const part = cov.scopeStatus === "PARTIAL";
+      yearBtns.push(`<button type="button" class="cov-${cov.coverageStatus} scope-${cov.scopeStatus}" data-year="${y}" data-idx="${first}" title="${y}: ${COVERAGE_STATUS[cov.coverageStatus]} · 조사 범위 ${cov.scopeStatus}${part ? ` (${cov.scope}) — 다른 연도와 사건 수를 단순 비교하지 말 것` : ""}">${y}${part ? "<small> 부분</small>" : ""}</button>`);
     }
   }
   $("yearJumps").innerHTML = yearBtns.join("");
@@ -43,7 +44,12 @@ export function createTimeline(idx, state, setCursor) {
   let strip = "";
   for (const y of idx.years) {
     strip += `<span class="strip-year" style="left:${pct(`${y}-01-01`)}%">${String(y).slice(2)}</span>`;
-    if (idx.coverageByYear[y].coverageStatus === "NOT_COVERED") {
+    const cy = idx.coverageByYear[y];
+    if (cy.scopeStatus === "PARTIAL") {
+      if (cy.scopeFrom > `${y}-01-01`) strip += `<span class="strip-out" style="left:${pct(`${y}-01-01`)}%;width:${pct(cy.scopeFrom) - pct(`${y}-01-01`)}%" title="${y}: 조사 범위 밖(${cy.scope})"></span>`;
+      if (cy.scopeTo < `${y}-12-30`) strip += `<span class="strip-out" style="left:${pct(cy.scopeTo)}%;width:${pct(`${y}-12-30`) - pct(cy.scopeTo)}%" title="${y}: 조사 범위 밖(${cy.scope})"></span>`;
+    }
+    if (cy.coverageStatus === "NOT_COVERED") {
       strip += `<span class="strip-nc" style="left:${pct(`${y}-01-01`)}%;width:${pct(`${y}-12-30`) - pct(`${y}-01-01`)}%" title="${y}: ${NOT_COVERED_LABEL}">미수록</span>`;
     }
   }

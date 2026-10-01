@@ -5,11 +5,12 @@
    이동 시간 = 0 (같은 날 연쇄 허용 — 단, 같은 날 연쇄는 '부분 순서'로 표시)
 
    두 가지 순서 판정 모드
-   strict(확실한 순서, 분석 기본값)
+   CERTAIN_ORDER(확실한 순서, 분석 기본값)
      instant  : 직전 도착 a 이후임이 확실해야 사용 → tMin ≠ null, tMin ≥ a.  새 도착 = tMax (보수적)
      duration : 지속 구간이 a 이후까지 이어져야 사용 → tMin·tMax ≠ null, tMax ≥ a. 새 도착 = max(a, tMin)
-   possible(가능한 순서)
+   TEMPORALLY_NOT_EXCLUDED(시간상 배제되지 않음)
      lo = tMin ?? −∞, hi = tMax ?? +∞.  hi ≥ a 이면 사용. 새 도착 = max(a, lo) (낙관적)
+     — 시간 정보와 모순되지 않을 뿐 실제 순서를 입증하지 않는다.
 
    두 모드 모두 도착 시각이 단조 비감소이므로 (도착, hop) 사전식 label-setting(Dijkstra형)이 정당하다.
    pathEligible=false 관계('~에 관한' 주장 등)는 analysisContacts 단계에서 이미 빠진다.
@@ -17,16 +18,22 @@
    경로 플래그(classifyPath)
      EXACT         : 모든 관계가 일 단위 단일 날짜이고, 단계마다 날짜가 엄격히 증가
      PARTIAL_ORDER : 순서는 확실하지만 같은 날 연쇄 또는 범위 날짜가 섞여 정확한 시각은 모름
-     UNCERTAIN     : 적어도 한 단계의 순서가 날짜만으로는 확정되지 않음(possible 모드에서만 발생)
+     UNCERTAIN     : 적어도 한 단계의 순서가 날짜만으로는 확정되지 않음 — 시간 정보상 모순되지 않지만 실제 순서를 입증하지 않음
+                     (TEMPORALLY_NOT_EXCLUDED 모드에서만 발생)
+   근거 범위: 입력 contacts는 model/evidence.js assertScope로 검사한다(기본 범위에서 해석·legacy가 섞이면 실패).
    ========================================================================== */
 import { toArcs } from "../model/deriveEdges.js";
 import { MIN_BOUND, MAX_BOUND } from "../model/dates.js";
+import { assertScope } from "../model/evidence.js";
+
+export const PATH_MODES = ["CERTAIN_ORDER", "TEMPORALLY_NOT_EXCLUDED"];
+const checkMode = (m) => { if (!PATH_MODES.includes(m)) throw new Error(`unknown path mode ${m}`); return m; };
 
 /** 시각 t에 u에 도착했을 때 arc를 지나 v에 도착하는 시각(못 쓰면 null) */
-export function traverse(arc, t, mode = "strict", T = MAX_BOUND) {
+export function traverse(arc, t, mode = "CERTAIN_ORDER", T = MAX_BOUND) {
   const c = arc.contact;
   let next;
-  if (mode === "strict") {
+  if (checkMode(mode) === "CERTAIN_ORDER") {
     if (c.tMin === null || c.tMax === null) return null;
     if (c.timeKind === "duration") { if (c.tMax < t) return null; next = c.tMin > t ? c.tMin : t; }
     else { if (c.tMin < t) return null; next = c.tMax; }
@@ -69,7 +76,7 @@ export function buildAdjacency(contacts) {
  * 단일/복수 출발점에서의 earliest-arrival(라벨 최적) 탐색
  * @returns {{arrival:Map, hops:Map, pred:Map}}
  */
-export function earliestArrival(adj, sources, t0, T = MAX_BOUND, mode = "strict") {
+export function earliestArrival(adj, sources, t0, T = MAX_BOUND, mode = "CERTAIN_ORDER") {
   const arrival = new Map(), hops = new Map(), pred = new Map();
   const heap = new Heap();
   for (const s of sources) { arrival.set(s, t0); hops.set(s, 0); heap.push({ n: s, t: t0, h: 0 }); }
@@ -91,7 +98,8 @@ export function earliestArrival(adj, sources, t0, T = MAX_BOUND, mode = "strict"
 }
 
 /** 출발점 집합 → target 까지의 time-respecting 경로(단계 목록) 또는 null */
-export function temporalPath(contacts, sources, target, t0, T, mode = "strict") {
+export function temporalPath(contacts, sources, target, t0, T, mode = "CERTAIN_ORDER", scope) {
+  assertScope(contacts, scope, "temporalPath");
   const adj = buildAdjacency(contacts);
   const res = earliestArrival(adj, sources, t0, T, mode);
   if (!res.arrival.has(target) || sources.includes(target)) return null;
@@ -111,7 +119,7 @@ export function classifyPath(steps, t0 = MIN_BOUND) {
   let cons = t0, certain = true, allExact = true, strictlyIncreasing = true, prevExact = null;
   for (const s of steps) {
     const c = s.contact;
-    const next = traverse({ contact: c }, cons, "strict");
+    const next = traverse({ contact: c }, cons, "CERTAIN_ORDER");
     if (next === null) { certain = false; cons = c.tMax ?? cons; }
     else cons = next;
     if (!c.exact) allExact = false;
@@ -123,12 +131,12 @@ export function classifyPath(steps, t0 = MIN_BOUND) {
 }
 
 /** 경로가 시간을 역행하지 않는지 검사(테스트·UI 검증용). mode에 맞는 순서 규칙으로 다시 따라간다. */
-export function isTimeRespecting(steps, t0 = MIN_BOUND, mode = "strict") {
+export function isTimeRespecting(steps, t0 = MIN_BOUND, mode = "CERTAIN_ORDER") {
   let t = t0;
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i];
     if (i > 0 && s.from !== steps[i - 1].to) return false;
-    if (mode === "strict" && !s.contact.pathEligible) return false;
+    if (!s.contact.pathEligible) return false;
     const next = traverse({ contact: s.contact }, t, mode);
     if (next === null || next !== s.time) return false;
     t = next;
@@ -140,7 +148,8 @@ export function isTimeRespecting(steps, t0 = MIN_BOUND, mode = "strict") {
  * 피드백 루프: anchor → … → x → anchor 의 time-respecting 순환.
  * x마다 가장 이른 귀환 루프 하나를 돌려준다. 플래그는 경로와 같은 규칙.
  */
-export function feedbackLoops(contacts, anchor, t0, T, mode = "strict") {
+export function feedbackLoops(contacts, anchor, t0, T, mode = "CERTAIN_ORDER", scope) {
+  assertScope(contacts, scope, "feedbackLoops");
   const adj = buildAdjacency(contacts);
   const res = earliestArrival(adj, [anchor], t0, T, mode);
   const loops = [];

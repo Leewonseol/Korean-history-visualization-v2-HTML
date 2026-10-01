@@ -1,0 +1,12 @@
+name: data-integrity
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # validate.mjs는 오류뿐 아니라 예상 밖 경고·stale 허용 목록에서도 실패한다.
+      - run: npm run check

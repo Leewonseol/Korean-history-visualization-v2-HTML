@@ -1,1 +1,16 @@
-{"type": "module", "private": true, "scripts": {"validate": "node tools/validate.mjs", "test": "node tools/test.mjs", "integrity": "node tools/integrity.mjs", "build": "node tools/build-check.mjs", "research": "node tools/build-research.mjs"}}
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "validate": "node tools/validate.mjs",
+    "test": "node tools/test.mjs",
+    "integrity": "node tools/integrity.mjs",
+    "build": "node tools/build-check.mjs",
+    "research": "node tools/build-research.mjs",
+    "golden": "node tools/golden.mjs",
+    "check": "node tools/validate.mjs && node tools/test.mjs && node tools/integrity.mjs && node tools/golden.mjs && node tools/build-check.mjs"
+  },
+  "dependencies": {
+    "cytoscape": "3.28.1"
+  }
+}

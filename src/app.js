@@ -1,12 +1,15 @@
 /* ==========================================================================
    진입점: 상태 관리와 모듈 연결
-   데이터 흐름: DATA → buildIndexes → (filters) → filterContacts(display) / analysisContacts(strict) → networkView / analysis / panels
-   근거 기본값: pack v1 검증 데이터만. legacy·해석은 왼쪽 '근거' 토글로만 포함.
+   데이터 흐름: DATA → buildIndexes → (filters) → filterContacts(display) / analysisContacts(CERTAIN_ORDER) → networkView / analysis / panels
+   근거 기본값: DIRECT + NORMALIZED(pack v1). legacy·해석은 왼쪽 '근거' 토글로만 포함 — 근거 필터는 model/evidence.js 하나뿐.
    ========================================================================== */
 import { DATA } from "./data/index.js";
 import { buildIndexes, PARTICIPANT_FIELDS } from "./model/indexes.js";
 import { validateData } from "./model/validate.js";
-import { filterContacts, analysisContacts, eventPasses, evidenceAllowed } from "./model/temporalNetwork.js";
+import { filterContacts, analysisContacts, eventPasses } from "./model/temporalNetwork.js";
+import { evidenceScope, allows, select, countByClass } from "./model/evidence.js";
+import { missingnessReport } from "./analysis/missingness.js";
+import { unresolvedNodeCount, pathIdentityAssumptions, mergeSensitivity } from "./analysis/identitySensitivity.js";
 import { yearStart, yearEnd, minDate, maxDate, shiftMonths, formatDate } from "./model/dates.js";
 import { computeMetrics } from "./analysis/centrality.js";
 import { temporalPath, isTimeRespecting, feedbackLoops } from "./analysis/temporalPaths.js";
@@ -18,7 +21,7 @@ import { renderEventPanel } from "./ui/eventPanel.js";
 import { renderPersonPanel } from "./ui/personPanel.js";
 import { renderAnalysisPanel } from "./ui/analysisPanel.js";
 import { createStoryMode } from "./ui/storyMode.js";
-import { esc, layerChip, relationLine } from "./ui/format.js";
+import { esc, layerChip, relationLine, evidenceClassSummary } from "./ui/format.js";
 import { NOT_COVERED_LABEL } from "./ui/timeline.js";
 
 const $ = (id) => document.getElementById(id);
@@ -32,7 +35,7 @@ const state = {
   tab: "event",
   selected: null,
   spotlight: null,
-  pathUI: { from: "JO_SEJONG", to: "JO_CHOEYUNDEOK", mode: "strict", result: undefined, loops: null, loopAnchor: "JO_SEJONG" }
+  pathUI: { from: "JO_SEJONG", to: "JO_CHOEYUNDEOK", mode: "CERTAIN_ORDER", result: undefined, loops: null, loopAnchor: "JO_SEJONG" }
 };
 
 /* ---------------- 창(window) 계산 ---------------- */
@@ -95,8 +98,8 @@ function update() {
   const disp = displaySpec();
   const displayContacts = filterContacts(idx, { ...fb, ...disp, mode: "display" });
   const win = analysisWindow();
-  const analysis = analysisContacts(idx, { ...fb, ...win }, "strict");
-  const metricsResult = computeMetrics(analysis.contacts, win, { mode: "strict" });
+  const analysis = analysisContacts(idx, { ...fb, ...win }, "CERTAIN_ORDER");
+  const metricsResult = computeMetrics(analysis.contacts, win, { mode: "CERTAIN_ORDER", scope: analysis.scope });
   const ev = idx.events[state.cursor];
   const evDate = idx.sortDateOf(ev);
   const evOk = eventPasses(idx, ev, fb) && (!disp.eventIds || disp.eventIds.has(ev.id)) && evDate >= disp.from && evDate <= disp.to;
@@ -118,8 +121,8 @@ function update() {
     : Object.fromEntries(metricsResult.nodes.map((n) => [n, metricsResult.metrics[n][state.f.metric] || 0]));
 
   net.update({ contacts: displayContacts, date: cursorDate(), metricValues, currentEventId: ev.id, selected: state.selected, extraNodes: [...parts], placeLinks });
-  // 경로 선택 목록: possible 판정으로 기간 안에 있을 수 있는 경로 대상 관계의 노드(strict에서 고립된 노드도 고를 수 있게)
-  const pathNodes = [...new Set(analysisContacts(idx, { ...fb, ...win }, "possible").contacts.flatMap((c) => [c.source, c.target]))]
+  // 경로 선택 목록: TEMPORALLY_NOT_EXCLUDED 판정으로 기간 안에 있을 수 있는 경로 대상 관계의 노드(strict에서 고립된 노드도 고를 수 있게)
+  const pathNodes = [...new Set(analysisContacts(idx, { ...fb, ...win }, "TEMPORALLY_NOT_EXCLUDED").contacts.flatMap((c) => [c.source, c.target]))]
     .sort((a, b) => idx.peopleById[a].canonicalName.localeCompare(idx.peopleById[b].canonicalName, "ko"));
   last = { displayContacts, analysisContacts: analysis.contacts, analysis, metricsResult, win, disp, pathNodes };
   timeline.render((e) => eventPasses(idx, e, fb));
@@ -166,7 +169,11 @@ function renderPanels() {
       trajectoryNote: state.selected && metrics[state.selected] ? "선택 인물의 연도별 slice 값" : "인물을 선택하지 않아 창 전체 degree 상위 3개를 표시(순위는 주인공 판정이 아님)",
       layerMatrix: layerDegreeMatrix(last.analysisContacts), pathUI: state.pathUI, cursorDate: cursorDate(),
       contactCount: last.analysisContacts.length, excludedUncertain: last.analysis.excludedUncertain, excludedAbout: last.analysis.excludedAbout,
-      datasetLabel: datasetLabel(), pathNodes: last.pathNodes, eventAllowed: (e) => evidenceAllowed(idx.evidenceOfEvent(e), baseFilters())
+      datasetLabel: datasetLabel(), pathNodes: last.pathNodes, eventAllowed: (e) => allows(evidenceScope(baseFilters()), e),
+      evidenceCounts: countByClass(last.analysisContacts), shownCounts: countByClass(last.displayContacts),
+      missingness: missingnessReport(last.analysis),
+      identity: unresolvedNodeCount(idx, nodes),
+      mergeSensitivity: mergeSensitivity(idx, last.analysisContacts, last.win, { scope: last.analysis.scope })
     });
   }
 }
@@ -176,7 +183,7 @@ function runPath() {
   const from = $("pathFrom").value, to = $("pathTo").value, mode = $("pathMode").value;
   state.pathUI.from = from; state.pathUI.to = to; state.pathUI.mode = mode;
   const win = last.win;
-  const contacts = mode === "strict" ? last.analysisContacts : analysisContacts(idx, { ...baseFilters(), ...win }, "possible").contacts;
+  const a = mode === "CERTAIN_ORDER" ? last.analysis : analysisContacts(idx, { ...baseFilters(), ...win }, "TEMPORALLY_NOT_EXCLUDED");
   let sources = [from], t0 = win.from;
   if (from.startsWith("event:")) {
     // 사건에서 출발: 그 사건의 행위자 전원, 사건 하한 시각부터(하한 미상이면 기간 시작부터 — 더 이른 출발을 가정하지 않음)
@@ -184,8 +191,8 @@ function runPath() {
     sources = [...new Set(ev.actors)];
     t0 = ev.dateMin ? maxDate(win.from, ev.dateMin) : win.from;
   }
-  const res = temporalPath(contacts, sources, to, t0, win.to, mode);
-  state.pathUI.result = res ? { ...res, ok: isTimeRespecting(res.steps, t0, mode) } : null;
+  const res = temporalPath(a.contacts, sources, to, t0, win.to, mode, a.scope);
+  state.pathUI.result = res ? { ...res, ok: isTimeRespecting(res.steps, t0, mode), identityAssumptions: pathIdentityAssumptions(idx, res.steps) } : null;
   state.pathUI.loops = null;
   update();
   switchTab("analysis"); renderPanels();
@@ -195,8 +202,9 @@ function runLoops() {
   state.pathUI.loopAnchor = a;
   const mode = $("pathMode") ? $("pathMode").value : state.pathUI.mode;
   state.pathUI.mode = mode;
-  const contacts = mode === "strict" ? last.analysisContacts : analysisContacts(idx, { ...baseFilters(), ...last.win }, "possible").contacts;
-  state.pathUI.loops = feedbackLoops(contacts, a, last.win.from, last.win.to, mode);
+  const an = mode === "CERTAIN_ORDER" ? last.analysis : analysisContacts(idx, { ...baseFilters(), ...last.win }, "TEMPORALLY_NOT_EXCLUDED");
+  state.pathUI.loops = feedbackLoops(an.contacts, a, last.win.from, last.win.to, mode, an.scope)
+    .map((l) => ({ ...l, identityAssumptions: pathIdentityAssumptions(idx, l.steps) }));
   renderPanels();
 }
 
@@ -230,23 +238,30 @@ document.addEventListener("click", (e) => {
   const first = cov[0], lastY = cov[cov.length - 1];
   $("dataRange").textContent = `${first.year}–${lastY.year}`;
   const b = $("validationBadge");
-  const nE = validation.errors.length, nW = validation.warnings.length;
-  b.textContent = nE ? `데이터 검증 오류 ${nE}` : `데이터 검증 통과${nW ? ` · 확인 필요 ${nW}` : ""}`;
-  b.classList.toggle("bad", nE > 0);
-  $("validationDetail").innerHTML = `<b>validateData()</b> ${esc(JSON.stringify(validation.stats))}
-    <ul>${validation.errors.map((x) => `<li class="err">${esc(x)}</li>`).join("")}${validation.warnings.map((x) => `<li class="warn">${esc(x)}</li>`).join("")}${validation.notices.map((x) => `<li class="muted">${esc(x)}</li>`).join("")}</ul>`;
+  const nE = validation.errors.length;
   b.addEventListener("click", () => $("validationDetail").classList.toggle("hidden"));
   if (nE) $("validationDetail").classList.remove("hidden");
 
   const byGroup = {};
   idx.events.forEach((e) => { const g = idx.evidenceOfEvent(e); byGroup[g] = (byGroup[g] || 0) + 1; });
-  const nc = cov.filter((c) => c.coverageStatus === "NOT_COVERED").map((c) => c.year);
-  const st = validation.stats;
+  const nc = cov.filter((c) => c.scopeStatus === "NONE").map((c) => c.year);
+  const partial = cov.filter((c) => c.scopeStatus === "PARTIAL").map((c) => `${c.year}(${c.scope})`);
+  const wr = validation.warningReport;
+  b.textContent = nE ? `데이터 검증 오류 ${nE}` : `데이터 검증 통과 · 예상된 경고 ${wr.expected.length}${wr.unexpected.length ? ` · 예상 밖 경고 ${wr.unexpected.length}` : ""}`;
+  b.classList.toggle("bad", nE > 0 || wr.unexpected.length > 0);
+  $("validationDetail").innerHTML = `<b>validateData()</b> ${esc(JSON.stringify(validation.stats))}
+    <ul>${validation.errors.map((x) => `<li class="err">${esc(x)}</li>`).join("")}
+    ${wr.unexpected.map((x) => `<li class="err">예상 밖 경고 [${esc(x.code)}] ${esc(x.message)}</li>`).join("")}
+    ${wr.expected.map((x) => `<li class="warn">예상된 경고(known exception) [${esc(x.code)}] ${esc(x.message)} — ${esc(x.reason)}</li>`).join("")}
+    ${validation.notices.map((x) => `<li class="muted">${esc(x)}</li>`).join("")}</ul>`;
+  if (wr.unexpected.length) $("validationDetail").classList.remove("hidden");
   $("coverageNote").innerHTML = `사건 ${idx.events.length}개 — pack v1 검증 ${byGroup.verified || 0} · legacy(v2 이관·anchor 시드) ${byGroup.legacy || 0}.
-    관계 ${st.relations}개 — pack v1 ${st.relationsVerified} · legacy ${st.relationsLegacy} · 해석 ${st.relationsInterpretation}.
-    <b>${NOT_COVERED_LABEL}:</b> ${nc.join(", ") || "없음"} <span class="muted">(그 해에 사건이 없었다는 뜻이 아님)</span>.
-    검증 연도도 전수 조사가 아닌 seed set입니다. 작업 범위 ${formatDate("1432-12-09")} ~ ${formatDate("1449-07-07")}(research/chronology_1432_1449.md).`;
+    관계 ${idx.contacts.length}개 — ${evidenceClassSummary(countByClass(idx.contacts))}
+    <span class="muted">(사료 id가 붙어 있다는 것과 원문에 관계가 직접 나타난다는 것은 다르다 — 기본 지표는 직접+규칙 파생만)</span>.
+    <b>${NOT_COVERED_LABEL}:</b> ${nc.join(", ") || "없음"} <span class="muted">(NA — 0이 아님)</span> ·
+    <b>부분 조사 연도:</b> ${partial.join(", ") || "없음"} <span class="muted">(사건 수를 다른 연도와 단순 비교하지 말 것)</span>.
+    검증 연도도 전수 조사가 아닌 seed set입니다. 작업 범위 ${formatDate("1432-12-09")} ~ ${formatDate("1449-07-07")}.`;
 })();
 
 update();
-window.__app = { state, idx, update, setCursor, selectPerson, last: () => last, net, validation };
+window.__app = { state, idx, update, setCursor, selectPerson, last: () => last, net, validation, countByClass };

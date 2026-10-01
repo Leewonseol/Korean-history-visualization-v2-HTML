@@ -1,14 +1,16 @@
 /* ==========================================================================
    Temporal metrics — 모든 정의는 research/methodology.md 와 README에 수식으로 기록.
    입력은 이미 기간·layer·level·theater·certainty·사료유형 필터가 적용된 contacts다
-   (기본: analysisContacts(..., "strict") — 시각이 확실히 기간 안에 있고 경로 대상인 verified 관계).
+   (기본: analysisContacts(..., "CERTAIN_ORDER") — 시각이 확실히 기간 안에 있고 경로 대상인 DIRECT+NORMALIZED 관계).
+   입력은 model/evidence.js assertScope로 검사한다: interpretation mode가 꺼져 있으면 해석 관계가 들어올 때 실패.
    정적 PageRank 등 시간을 무시하는 지표는 계산하지 않는다.
-   날짜 순서가 확정되지 않은 관계로 가짜 순서를 만들지 않기 위해, 도달·매개 계산은 strict 순서 규칙
+   날짜 순서가 확정되지 않은 관계로 가짜 순서를 만들지 않기 위해, 도달·매개 계산은 CERTAIN_ORDER 순서 규칙
    (temporalPaths.traverse)을 쓰고, communicability는 일 단위로 확정된(exact) 관계만 시간 조각에 넣는다.
    ========================================================================== */
 import { toArcs } from "../model/deriveEdges.js";
 import { buildAdjacency, earliestArrival, traverse } from "./temporalPaths.js";
 import { monthsBetween, yearOf } from "../model/dates.js";
+import { assertScope } from "../model/evidence.js";
 
 /**
  * @param {Array} contacts filterContacts 결과
@@ -16,7 +18,8 @@ import { monthsBetween, yearOf } from "../model/dates.js";
  * @param {object} opts { betweenness=true, communicability=true }
  */
 export function computeMetrics(contacts, win, opts = {}) {
-  const { betweenness = true, communicability = true, mode = "strict" } = opts;
+  const { betweenness = true, communicability = true, mode = "CERTAIN_ORDER", scope } = opts;
+  assertScope(contacts, scope, "computeMetrics");
   const nodes = [...new Set(contacts.flatMap((c) => [c.source, c.target]))].sort();
   const M = {};
   for (const n of nodes) {

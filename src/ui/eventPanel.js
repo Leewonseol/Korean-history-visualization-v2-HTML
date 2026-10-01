@@ -6,7 +6,7 @@
    ========================================================================== */
 import { MECHANISMS, OUTCOME_TYPES, THEATERS, DOCUMENT_TYPES, CAUSAL_STATUS, CERTAINTY, DATE_PRECISION, PROVENANCE, EVIDENCE_STATUS } from "../data/vocab.js";
 import { esc, personLink, eventLink, certBadge, sourceLink, relationLine, formatDate, formatRange, evidenceBadge } from "./format.js";
-import { evidenceAllowed } from "../model/temporalNetwork.js";
+import { evidenceScope, allows, classOf } from "../model/evidence.js";
 
 const ROLE_LABELS = {
   actors: "행위자", targets: "대상", decisionMakers: "결정자", informationSources: "정보원",
@@ -44,9 +44,10 @@ export function renderEventPanel(el, idx, ev, data, f = {}) {
   }).join(" ");
 
   const allContacts = idx.contacts.filter((c) => c.eventId === ev.id);
-  const contacts = allContacts.filter((c) => evidenceAllowed(c.evidenceStatus, f));
+  const scope = evidenceScope(f);
+  const contacts = allContacts.filter((c) => allows(scope, c));
   const hidden = { legacy: 0, interpretation: 0 };
-  allContacts.forEach((c) => { if (!evidenceAllowed(c.evidenceStatus, f)) hidden[c.evidenceStatus] = (hidden[c.evidenceStatus] || 0) + 1; });
+  allContacts.forEach((c) => { if (!allows(scope, c)) hidden[classOf(c) === "LEGACY" ? "legacy" : "interpretation"]++; });
   const discrepancies = (ev.discrepancies || []).map((id) => (data.DISCREPANCIES || []).find((x) => x.id === id)).filter(Boolean);
   const incoming = idx.events.filter((e) => (e.eventLinks || []).some((l) => l.eventId === ev.id))
     .map((e) => ({ e, l: e.eventLinks.find((x) => x.eventId === ev.id) }));
@@ -67,6 +68,7 @@ export function renderEventPanel(el, idx, ev, data, f = {}) {
       <tr><td>Provenance</td><td>${evidenceBadge(ev.provenance)}</td></tr>
       <tr><td>Date precision</td><td>${esc(ev.datePrecision)} — ${esc(DATE_PRECISION[ev.datePrecision] || "")}</td></tr>
       <tr><td>Causal status</td><td>${causalSet.length ? causalSet.map((c) => `<span class="causal" title="${esc(CAUSAL_STATUS[c] || "")}">${esc(c)}</span>`).join(" ") : "<span class='muted'>관계 없음</span>"} <small class="muted">(관계별 값 — 아래 목록)</small></td></tr>
+      <tr><td>Relation evidence</td><td>${["DIRECT", "NORMALIZED", "LEGACY", "INTERPRETATION"].map((k) => `${k} ${allContacts.filter((c) => classOf(c) === k).length}`).join(" · ")}</td></tr>
     </table>
 
     <h4 class="lw">WHO <small>누가 행동했는가</small></h4>
@@ -99,7 +101,7 @@ export function renderEventPanel(el, idx, ev, data, f = {}) {
     ${contacts.length ? `<ul class="plain rels">${contacts.map((c) => relationLine(idx, c)).join("")}</ul>` : allContacts.length ? "" : "<p class='muted'>사료에서 확인된 인물 간 행위가 없어 edge를 만들지 않았습니다(장소·결과만 기록).</p>"}
 
     ${(ev.eventLinks || []).length || incoming.length ? `<h4>사건 연결 <small class="muted">선후·언급은 인과가 아님</small></h4><ul class="plain">
-      ${(ev.eventLinks || []).map((l) => `<li>← ${eventLink(idx, l.eventId)} ${esc(LINK_LABELS[l.linkType] || l.linkType)} · <span class="causal" title="${esc(CAUSAL_STATUS[l.causalStatus])}">${esc(l.causalStatus)}</span> ${evidenceBadge(l.provenance)}<div class="rel-note">${esc(l.note || "")}</div></li>`).join("")}
+      ${(ev.eventLinks || []).map((l) => `<li>← ${eventLink(idx, l.eventId)} ${esc(LINK_LABELS[l.linkType] || l.linkType)} · <span class="causal" title="${esc(CAUSAL_STATUS[l.causalStatus])}">${esc(l.causalStatus)}</span> ${evidenceBadge(l.provenance)}<div class="rel-note">${esc(l.note || "")}${l.causalEvidence ? `<br>근거 원문: “${esc(l.causalEvidence.quote)}” <code>${esc(l.causalEvidence.locator)}</code>` : ""}</div></li>`).join("")}
       ${incoming.map(({ e, l }) => `<li>→ ${eventLink(idx, e.id)} ${esc(LINK_LABELS[l.linkType] || l.linkType)} · <span class="causal">${esc(l.causalStatus)}</span></li>`).join("")}
     </ul>` : ""}
 

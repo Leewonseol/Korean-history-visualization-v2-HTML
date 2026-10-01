@@ -7,16 +7,17 @@
      편집자 일반지식 한자는 넣지 않는다(null).
    - nameFormVerified 는 '이 표기가 pack에 있다'는 뜻일 뿐 '여러 등장이 같은 사람'이라는 뜻이 아니다.
      동일성은 identityStatus(vocab.IDENTITY_STATUS)로 따로 기록한다:
-       명시 선언이 없으면 model/indexes.js가 등장 사건 수로 계산
-       (2건 이상 → probable_same_person, 1건 → single_attestation, 집단·기관 → collective_or_office).
-   - 동명이인 가능성이 있는 후기 등장은 별도 ID(unresolved_homonym) + possibleSameAs. 자동 병합 금지.
+       VERIFIED_SAME은 identityEvidence(pack locator·quote)가 있을 때만 선언한다.
+       선언이 없으면 model/indexes.js가 검증 등장 사건 수로 계산
+       (2건 이상 → PROBABLE_SAME(미해결), 1건 → SINGLE_ATTESTATION, 집단·기관 → COLLECTIVE_OR_OFFICE).
+   - 동명이인 가능성이 있는 후기 등장은 별도 ID(UNRESOLVED_DISTINCT) + possibleSameAs. 자동 병합 금지.
    - 이 목록은 1432~1449 등장인물 전부가 아니다(pack v1과 v2 데이터에서 확인된 이름만).
    ========================================================================== */
 
 function actor(personId, canonicalName, hanja, entityType, affiliation, defaultLevel, extra = {}) {
   return {
     personId, canonicalName, hanja, aliases: [], entityType, affiliation, defaultLevel,
-    identityNote: "", identityStatus: entityType === "person" ? null : "collective_or_office",
+    identityNote: "", identityStatus: entityType === "person" ? null : "COLLECTIVE_OR_OFFICE", identityEvidence: [],
     possibleSameAs: [], nameFormVerified: false, nameFormSource: null, provenance: "pack_v1_direct", ...extra
   };
 }
@@ -27,7 +28,11 @@ const C = (h, extra = {}) => ["person", "JOSEON_CENTRAL", "L1", { ...(h ? V : {}
 export const PEOPLE = [
   /* ---------------- 조선 왕·중앙 관료 ---------------- */
   actor("JO_SEJONG", "세종", null, "person", "JOSEON_CENTRAL", "L0",
-    { identityStatus: "confirmed_same_person", identityNote: "재위 국왕. 모든 등장이 같은 인물." }),
+    { identityStatus: "VERIFIED_SAME", identityBasis: "OFFICE_UNIQUENESS",
+      identityNote: "재위 국왕 1인. pack 지리지가 같은 재위 연호(세종 16·23년 등)로 사건을 매기므로 모든 등장이 같은 국왕.",
+      identityEvidence: [
+        { locator: "pack_v1:GEO_JONGSEONG:VERIFIED SUMMARY:L1322", quote: "Sejong 16: Yŏngbuk moved; Hoeryŏng established at Almuha" },
+        { locator: "pack_v1:GEO_JONGSEONG:VERIFIED SUMMARY:L1325", quote: "Sejong 23: upgraded to Dohobu and further southern households moved in" }] }),
   actor("JO_HWANGHUI", "황희", "黃喜", ...C(1)),
   actor("JO_MAENGSASEONG", "맹사성", "孟思誠", ...C(1)),
   actor("JO_GWONJIN", "권진", "權軫", ...C(1)),
@@ -81,7 +86,10 @@ export const PEOPLE = [
   /* ---------------- 조선 북방 군·지방 ---------------- */
   actor("JO_CHOEYUNDEOK", "최윤덕", "崔閏德", "person", "JOSEON_FRONTIER", "L3", { ...V }),
   actor("JO_LEECHEON", "이천", "李蕆", "person", "JOSEON_FRONTIER", "L2",
-    { ...V, identityStatus: "confirmed_same_person",
+    { ...V, identityStatus: "VERIFIED_SAME", identityBasis: "PACK_EXPLICIT_LINK",
+      identityEvidence: [
+        { locator: "pack_v1:E1432_1211:KEY CONTENT:L94", quote: "Yi Cheon is therefore already directly inside the northern-defense policy" },
+        { locator: "pack_v1:E1436_0619:SIGNIFICANCE:L663", quote: "Yi Cheon is clearly the policy-to-field bridge BEFORE the 1437 campaign." }],
       identityNote: "pack v1이 1432-12-11 화포 논의의 이천을 1436 평안도 방어·1437 정벌의 이천과 같은 정책 네트워크 인물로 명시. 『서정록』 관련 인물(서지)." }),
   actor("JO_CHOEHAESAN", "최해산", "崔海山", "person", "JOSEON_FRONTIER", "L2",
     { ...V, identityNote: "1432-12-11 화포 논의(관직 미기재) → 1433 좌군 지휘(L4)." }),
@@ -93,13 +101,13 @@ export const PEOPLE = [
   actor("JO_KIMHYOSEONG", "김효성", "金孝誠", "person", "JOSEON_FRONTIER", "L4",
     { ...V, possibleSameAs: ["JO_KIMHYOSEONG_1443"], identityNote: "1433 정벌 분진 지휘(pack)." }),
   actor("JO_KIMHYOSEONG_1443", "김효성(1443 기사)", null, "person", "JOSEON_FRONTIER", "L4",
-    { identityStatus: "unresolved_homonym", possibleSameAs: ["JO_KIMHYOSEONG"],
+    { identityStatus: "UNRESOLVED_DISTINCT", possibleSameAs: ["JO_KIMHYOSEONG"],
       identityNote: "1443-10-05 기사(pack v1)에 언급된 김효성. 1433년 김효성(金孝誠)과 동일인인지 pack이 밝히지 않아 별도 노드로 둠 — 자동 병합 금지." }),
   actor("JO_HONGSASEOK", "홍사석", "洪師錫", "person", "JOSEON_FRONTIER", "L2",
     { ...V, possibleSameAs: ["JO_HONGSASEOK_1437"],
       identityNote: "1432-12-21 '돌아올 조사관'(pack) · 1433 정벌 분진 지휘(pack). 두 등장의 동일성은 pack이 명시하지 않음(같은 노드 = probable)." }),
   actor("JO_HONGSASEOK_1437", "홍사석(1437 이천 본군)", null, "person", "JOSEON_FRONTIER", "L4",
-    { identityStatus: "unresolved_homonym", possibleSameAs: ["JO_HONGSASEOK"],
+    { identityStatus: "UNRESOLVED_DISTINCT", possibleSameAs: ["JO_HONGSASEOK"],
       identityNote: "1437-09-14 기사(pack v1)에서 이천 본군과 동행. 1432~1433년 홍사석(洪師錫)과 동일인인지 pack이 밝히지 않아 별도 노드 — 자동 병합 금지." }),
   actor("JO_PARKCHO", "박초", "朴礎", "person", "JOSEON_FRONTIER", "L4", { ...V }),
   actor("JO_PARKHOMUN", "박호문", "朴好問", "person", "JOSEON_FRONTIER", "L4", { ...V, identityNote: "1433-05-07 최윤덕 보고 전달자." }),
@@ -108,7 +116,7 @@ export const PEOPLE = [
   actor("JO_JIHAM", "지함", "池含", "person", "JOSEON_FRONTIER", "L4", { ...V, identityNote: "1433 알목하에 다녀와 복명." }),
   actor("JO_LEEJIN", "이진", "李震", "person", "JOSEON_FRONTIER", "L4", { ...V, possibleSameAs: ["JO_LEEJIN_1437"] }),
   actor("JO_LEEJIN_1437", "이진(1437 이천 본군)", null, "person", "JOSEON_FRONTIER", "L4",
-    { identityStatus: "unresolved_homonym", possibleSameAs: ["JO_LEEJIN"],
+    { identityStatus: "UNRESOLVED_DISTINCT", possibleSameAs: ["JO_LEEJIN"],
       identityNote: "1437-09-14 기사에서 이천과 동행. 1435년 이진(李震)과 동일인인지 미확인 — 자동 병합하지 않음." }),
   actor("JO_YEOSEONGRYEOL", "여성렬", "余成烈", "person", "JOSEON_FRONTIER", "L4", { ...V }),
   actor("JO_KIMSUYEON", "김수연", "金壽延", "person", "JOSEON_FRONTIER", "L4", { ...V }),

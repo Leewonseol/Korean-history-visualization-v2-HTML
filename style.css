@@ -257,3 +257,26 @@ ul.plain li { padding: 3px 0; border-bottom: 1px dotted var(--border); }
 .story-src small { color: var(--muted); font-size: 10.5px; }
 .chart .nc-mark { fill: var(--muted); font-size: 14px; }
 .validation-detail li.warn { color: var(--warn-ink); }
+
+/* ---------- 2차 감사: 근거 등급·coverage 범위·claim ---------- */
+.ev-badge.evc-DIRECT { color: #1f5f3f; border-color: #1f5f3f; }
+.ev-badge.evc-NORMALIZED { color: #2b6cb0; border-color: #2b6cb0; border-style: dashed; }
+.ev-badge.evc-LEGACY { color: var(--ink-soft); border-color: var(--muted); border-style: dotted; }
+.ev-badge.evc-INTERPRETATION { color: #8d6e3f; border-color: #8d6e3f; border-style: dashed; }
+.evc-count { white-space: nowrap; }
+.strip-out { position: absolute; top: 0; height: 22px; background: repeating-linear-gradient(-45deg, #f6f7f9, #f6f7f9 3px, #e9ecf0 3px, #e9ecf0 6px); pointer-events: auto; }
+#yearJumps button.scope-PARTIAL { border-style: dashed; }
+#yearJumps button.scope-PARTIAL small { font-size: 9.5px; color: var(--ink-soft); }
+.chart .cov { stroke: none; }
+.chart .cov-FULL { fill: #cfd8e3; }
+.chart .cov-PARTIAL { fill: #f1d9a8; }
+.chart .cov-NONE { fill: #e5e7eb; }
+.chart .pt.partial .mk { fill: #fff; stroke: var(--accent); stroke-width: 2; }
+.miss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.metric-table.mini { font-size: 11px; }
+.story-claims { margin: 0; padding-left: 16px; }
+.story-claims li.ct-NARRATIVE { font-style: italic; }
+.story-claims li.ct-INFERRED { color: var(--ink-soft); }
+details.trace { display: inline; }
+details.trace summary { display: inline; cursor: pointer; font-size: 10.5px; color: var(--ink-soft); }
+details.trace[open] > div { margin: 2px 0 4px; padding: 4px 6px; background: #f6f7f9; border-radius: 4px; }

@@ -27,7 +27,8 @@ GitHub Pages: Settings → Pages → Deploy from a branch → 브랜치 / `(root
 
 ```bash
 node tools/validate.mjs          # validateData(): 참조 무결성·날짜·Lasswell 필드·사료 수준 검사
-node tools/test.mjs              # 데이터 검증 + time-respecting path(strict/possible)·betweenness·communicability 단위 테스트
+node tools/test.mjs              # 데이터 검증 + time-respecting path(CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED)·근거 선택기·betweenness 단위 테스트
+node tools/golden.mjs            # semantic golden test(원문 → 기대 그래프 표현 회귀)
 node tools/integrity.mjs         # 역사 무결성 테스트(provenance·방향 정책·날짜 정밀도·coverage·사료 상태·동일성·장소·스토리)
 node tools/build-check.mjs       # production build 점검(index.html 참조, import 그래프, named export, 문법)
 node tools/build-research.mjs    # research/*.md 의 표를 데이터에서 재생성(연도별 coverageStatus 출력)
@@ -46,7 +47,9 @@ src/
     vocab.js                LEVEL · LAYER · certainty · theater · 세력 · 메커니즘 · 결과 · 사료 유형 어휘
     people.js               PEOPLE(authority, identityStatus·possibleSameAs) · PERSON_ATTESTATIONS(기사일 단위 관직·역할 증언)
     places.js               PLACES (좌표 없음 · coordinateStatus · locationStatus · 근거 있는 상위 장소만)
-    coverage.js             연도별 조사 범위 레지스트리(1444 = NOT_COVERED)
+    coverage.js             연도별 조사 범위 레지스트리(scopeStatus FULL/PARTIAL/NONE — 1432·1449 PARTIAL, 1444 NONE)
+    relationTraces.js       DIRECT·NORMALIZED 관계마다 pack 원문 줄 → 규칙 → edge 추적
+    expectedWarnings.js     의도적으로 남긴 경고 허용 목록(예상 밖 경고는 CI 실패)
     sources.js              SOURCES (edge 수준 provenance)
     events.js               EVENTS (단일 source of truth) · DISCREPANCIES
     story.js                스토리 모드 장면(문장 단위 eventIds·sourceIds·narrativeStatus·provenance)
@@ -55,10 +58,13 @@ src/
     dates.js                음력 날짜 문자열(윤달 'MML') 비교·근사 월 계산
     indexes.js              id 조회, levelAt(person, t), 첫/마지막 등장, 인물별 사건·사료
     deriveEdges.js          EVENTS.relations → temporal contacts (EDGES 수동 관리 없음)
-    temporalNetwork.js      근거(검증/legacy/해석)·기간(display/strict/possible)·layer·level·theater·certainty·사료유형 필터
+    evidence.js             근거 선택기 단일 소스(DIRECT·NORMALIZED 기본, LEGACY·INTERPRETATION opt-in, assertScope)
+    temporalNetwork.js      근거(검증/legacy/해석)·기간(display/CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED)·layer·level·theater·certainty·사료유형 필터
     validate.js             validateData()
   analysis/
-    temporalPaths.js        time-respecting path(strict/possible, EXACT/PARTIAL_ORDER/UNCERTAIN), 피드백 루프
+    temporalPaths.js        time-respecting path(CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED, EXACT/PARTIAL_ORDER/UNCERTAIN), 피드백 루프
+    missingness.js          시각 불확실로 지표에서 빠지는 관계의 분포
+    identitySensitivity.js  동일성 미해결 노드 수·경로의 동일성 가정·병합 민감도
     centrality.js           temporal metrics, dynamic communicability, 인물 서사 지표
     trajectories.js         연도별 centrality trajectory, layer별 중심성
   ui/
@@ -100,7 +106,7 @@ tools/  validate.mjs  test.mjs  integrity.mjs  e2e.mjs  build-check.mjs  build-r
 - **왼쪽**: **근거(pack v1 검증만 [ON] · legacy/v2 이관 포함 [OFF] · 편집자 해석 포함 [OFF])** · 기간(연도, 타임라인 커서까지 제한, 누적/최근 12개월/현재 사건만) · level · layer · theater · certainty · 사료 유형 · 노드 크기 지표 · 장소 노드 overlay · 범례
 - **가운데**: level band 배치 네트워크(위→아래: 왕, 중앙 관료, 중앙 군사, 지방 최고지휘, 현장 지휘, 군졸, 주민; 외부 세력은 오른쪽 세력별 열),
   사건 분포 strip(연·월 단위 사건은 구간, 1444는 '미수록' 음영), 슬라이더, 재생/일시정지, 이전·다음, **coverage 레지스트리에서 생성되는 연도 jump**
-- **오른쪽 탭**: [사건] 근거(Source · Evidence status · Provenance · Date precision · Causal status)·Lasswell 6요소·관계(Layer · Direction · Source · Evidence status · Certainty · Causal status)·사건 연결·사료 링크·discrepancy / [인물] 동일성 상태·표기 근거·관직 증언, 서사 판단용 지표, 연도별 trajectory / [분석] strict 지표(제외 수 표시), trajectory, layer별 중심성, **Temporal Path(strict/possible, 경로 플래그)**, 피드백 루프
+- **오른쪽 탭**: [사건] 근거(Source · Evidence status · Provenance · Date precision · Causal status)·Lasswell 6요소·관계(Layer · Direction · Source · Evidence status · Certainty · Causal status)·사건 연결·사료 링크·discrepancy / [인물] 동일성 상태·표기 근거·관직 증언, 서사 판단용 지표, 연도별 trajectory / [분석] CERTAIN_ORDER 지표(근거 등급별 입력 수·제외 수·동일성 미해결 노드 수), missingness 분포, 병합 민감도, coverage 띠가 붙은 trajectory, layer별 중심성, **Temporal Path(CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED, 경로 플래그·동일성 가정)**, 피드백 루프
 - 시각 규칙: 노드 색 = 세력, 모양 = 개인/집단/기관, 세로 위치 = 시점 level, 크기 = 선택 지표(기본 균일), 선 색 = layer,
   **실선 = 사료 기록 사실 · 점선 = 당대 주장/다툼 · 파선 = 해석/2차/미검증 시드**, 흐린 선 = 과거 관계, 굵은 선 = 현재 사건
 
@@ -118,16 +124,17 @@ tools/  validate.mjs  test.mjs  integrity.mjs  e2e.mjs  build-check.mjs  build-r
 | Temporal betweenness | prefix-optimal foremost time-respecting 경로 위 Brandes식 의존도 합 |
 | Broadcast / receive | Grindrod et al.(2011) dynamic communicability Q = Π(I−αA_k)⁻¹ 의 행·열 합 |
 
-time-respecting path: τ₁ ≤ τ₂ ≤ … ≤ τ_k (같은 날 연쇄 허용, 과거 edge로 역행 불가). 날짜가 범위·미상이면 strict(확실한 순서)는 순서가 확정되는
-단계만 잇고, possible(가능한 순서)은 UNCERTAIN으로 표시합니다. 지표는 strict, 일 단위 확정 관계만 communicability slice에 넣습니다.
-정적 PageRank 등 시간을 무시한 지표는 계산하지 않으며, 알고리즘이 '주인공'을 정하지 않습니다.
+time-respecting path: τ₁ ≤ τ₂ ≤ … ≤ τ_k (같은 날 연쇄 허용, 과거 edge로 역행 불가). 날짜가 범위·미상이면 CERTAIN_ORDER는 순서가 확정되는
+단계만 잇고, TEMPORALLY_NOT_EXCLUDED는 '시간 정보상 모순되지 않지만 실제 순서를 입증하지 않는' 경로를 UNCERTAIN으로 표시합니다.
+지표는 CERTAIN_ORDER·DIRECT+NORMALIZED 기본이며, 일 단위 확정 관계만 communicability slice에 넣습니다.
+Cytoscape는 `vendor/cytoscape/3.28.1/`의 고정 파일을 production과 E2E가 함께 씁니다(`tools/build-check.mjs`가 버전·해시 일치 검사).
 
 ## 사료·서술 원칙
 
 - 사료에서 구체적 행위가 확인될 때만 edge를 만들며, 같은 기사에 이름이 함께 나온다는 이유로 관계를 만들지 않습니다.
 - 이만주 측 주장·제보자 진술은 `contemporary_claim`(점선). 조선 측 전과·사상자 수치에는 '조선 측 보고 수치' 표시.
 - 여진을 하나로 합치지 않고(건주위·파저강 기타·건주좌위·홀라온·오량합·세력 미특정 분리), 맹가첩목아·범찰·동창·임합라를 이만주의 부하로 그리지 않습니다.
-- 4군·6진을 파저강 정벌 하나의 직접 결과로 단순화하지 않으며(자성군 설치 인과 = `sequence_only`), 1449년을 북방 문제 해결 시점으로 묘사하지 않습니다.
+- 4군·6진을 파저강 정벌 하나의 직접 결과로 단순화하지 않으며(자성군 설치와의 연결은 인과로 기록하지 않음), 1449년을 북방 문제 해결 시점으로 묘사하지 않습니다.
 - confirmed 관계가 1차 사료 없이 만들어지면 `validateData()`가 막습니다.
 
 ## 다음 단계

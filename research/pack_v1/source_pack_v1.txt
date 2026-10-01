@@ -1,0 +1,1512 @@
+# VALIDATED HISTORICAL SOURCE PACK v1
+# Scope: 1432-12-09 ~ 1449-07-07
+# Status: manually verified against accessible Joseon Wangjo Sillok pages.
+# IMPORTANT: This is a verified seed set, NOT yet an exhaustive extraction of every relevant article/person.
+# Never infer missing people, events, or relations from this file.
+
+==================================================
+A. PRIMARY SOURCE ENTRY POINTS
+==================================================
+
+Joseon Wangjo Sillok - Sejong monthly browsing
+https://sillok.history.go.kr/search/inspectionMonthList.do?id=kda
+
+Seojeongnok, Encyclopedia of Korean Culture
+https://encykorea.aks.ac.kr/Article/E0028169
+
+Seojeongnok should be treated separately from the Sillok:
+- Current surviving woodblock edition was published in 1516.
+- It concerns Yi Cheon (李蕆), the Pajŏ River campaigns, Four Counties,
+  and events from 1432 through 1437.
+- According to the encyclopedia description, it includes military campaigns,
+  migration/resettlement, taxation, relief, local reports, and court responses.
+- Do NOT treat the encyclopedia summary itself as the primary text.
+
+==================================================
+B. VERIFIED CHRONOLOGICAL EVENTS
+==================================================
+
+--------------------------------------------------
+E1432_1209
+DATE: 1432-12-09
+TITLE: Yŏyŏn invasion and Park Cho's pursuit
+SOURCE:
+https://sillok.history.go.kr/id/wda_11412009_003
+
+WHO:
+- 평안도 감사 [reporting institution/officeholder not named in excerpt]
+- 박초 朴礎, 강계절제사
+- invading "야인" cavalry, about 400
+- Joseon soldiers
+- captured Joseon civilians
+
+WHERE:
+- 여연
+- 강계 frontier
+THEATER: AMNOK
+
+WHAT / OUTCOME:
+- c. 400 mounted raiders entered Yŏyŏn and seized people/property.
+- Park Cho pursued them.
+- 26 captives, 30 horses, 50 cattle recovered.
+- 13 Joseon personnel killed.
+- 25 wounded by arrows.
+- Pursuit stopped as night fell.
+
+RELATIONS:
+- 야인 -> 여연 주민 : MILITARY_ATTACK
+- 박초 -> 야인 : PURSUIT / MILITARY_CONFLICT
+- 박초 -> 조선 포로 : RECOVERY / PROTECTION
+
+CERTAINTY:
+confirmed as Sillok report; casualty and recovery figures are Joseon-reported.
+
+--------------------------------------------------
+E1432_1211
+DATE: 1432-12-11
+TITLE: Central military consultation immediately after Yŏyŏn invasion
+SOURCE:
+https://sillok.history.go.kr/id/kda_11412011_004
+
+WHO:
+- 세종
+- 최윤덕 崔閏德
+- 허조 許稠
+- 하경복 河敬復
+- 정흠지 鄭欽之
+- 조말생 趙末生
+- 이천 李蕆
+- 최해산 崔海山
+- 안숭선 安崇善
+
+WHERE:
+- royal court / central government
+THEATER: CENTRAL
+
+HOW:
+- consultation on firearms, fortification, training and frontier defense
+
+KEY CONTENT:
+- Discussion of artillery already deployed to Yŏyŏn and Gangye.
+- Yi Cheon, Choe Hae-san, Jeong Heum-ji and others argued for first sending
+  officials/artisans to teach firearm use and supplying iron projectiles.
+- Discussion of stone walls or wooden palisades at defensive posts.
+- Yi Cheon is therefore already directly inside the northern-defense policy
+  network two days after the 1432 invasion.
+
+RELATIONS:
+- 세종 -> listed ministers/generals : POLICY_CONSULTATION
+- 이천 -> 세종 : POLICY_ADVICE
+- 최윤덕 -> 세종 : POLICY_ADVICE
+- 최해산 -> 세종 : MILITARY_TECH_ADVICE
+
+--------------------------------------------------
+E1432_1221
+DATE: 1432-12-21
+TITLE: Yi Manju-side counterclaim and court responsibility debate
+SOURCE:
+https://sillok.history.go.kr/id/kda_11412021_003
+
+WHO:
+- 이만주 李滿住
+- 유을합 劉乙哈, Yi Manju's subordinate ch'ŏnho
+- 여둔 지휘 [document source]
+- 세종
+- 안숭선
+- 김종서
+- 안순
+- 하경복
+- 황희
+- 허조
+- 신장
+- 김익정
+- 성억
+- 정연
+- 조계생
+- 이맹균
+- 조말생
+- 홍사석 mentioned as an investigator expected to return
+
+WHAT:
+- Yu Eul-hap brought 7 recovered captives.
+- Yi Manju-side account claimed Hollaon Udige raiders, not Yi Manju,
+  had conducted the attack.
+- It claimed Yi Manju gathered c. 600 men and intercepted the raiders,
+  recovering captives.
+- Court explicitly debated whether this was true or fabricated.
+
+IMPORTANT:
+This is a CONTEMPORARY CLAIM, NOT a confirmed fact.
+
+RELATIONS:
+- 유을합 -> 조선 : CLAIM / DIPLOMACY
+- 이만주 -> 조선 : COUNTER_CLAIM
+- 세종 <-> 대신들 : INVESTIGATION / DELIBERATION
+
+CERTAINTY:
+contemporary_claim / disputed
+
+--------------------------------------------------
+E1433_0215
+DATE: 1433-02-15
+TITLE: Secret deliberation over whether and how to punish Pajŏ River groups
+SOURCE:
+https://sillok.history.go.kr/id/kda_11502015_002
+
+WHO includes:
+- 세종
+- 황희
+- 권진
+- 허조
+- other central ministers / military officials
+- 최윤덕 mentioned as frontier commander
+
+WHAT:
+- Sejong secretly solicited views on:
+  * how to deal with Pajŏ River Jurchens
+  * wording of accusation
+  * whether/how to campaign
+- Ministers disagreed over culpability, geography, military risk,
+  and evidentiary sufficiency.
+
+RELATIONS:
+- 세종 -> central officials : POLICY_QUERY
+- officials -> 세종 : POLICY_ADVICE
+- court -> Pajŏ groups : INVESTIGATION / RESPONSIBILITY_ASSESSMENT
+
+--------------------------------------------------
+E1433_0226
+DATE: 1433-02-26
+TITLE: Command structure for Pajŏ River expedition debated
+SOURCE:
+https://sillok.history.go.kr/id/kda_11502026_004
+
+WHO:
+- 세종
+- 최윤덕
+- 이순몽
+- 의정부
+- 육조
+- 삼군 도진무
+
+WHAT:
+- Court had now decided on a campaign.
+- Debate over force organization and Choe Yun-deok's command authority.
+- General preference: Choe as central-army commander with authority over left/right armies.
+- Yi Sun-mong argued for a separate supreme commander.
+
+RELATIONS:
+- 세종 -> 최윤덕 : COMMAND_DESIGN
+- 이순몽 -> 세종 : POLICY_DISAGREEMENT
+- court actors : MILITARY_ORGANIZATION
+
+--------------------------------------------------
+E1433_0307
+DATE: 1433-03-07
+TITLE: Choe Yun-deok argues that 3,000 troops are insufficient
+SOURCE:
+https://sillok.history.go.kr/id/wda_11503007_001
+
+WHO:
+- 최윤덕
+- 최치운 崔致雲
+- 세종
+
+WHAT:
+- Choe submitted operational plan via Choe Chi-un.
+- Argued that 3,000 troops were insufficient.
+- Proposed multiple routes.
+- Estimated more than 10,000 troops necessary.
+
+RELATIONS:
+- 최윤덕 -> 세종 : MILITARY_ADVICE
+- 최치운 -> court : REPORT_CARRIER
+
+--------------------------------------------------
+E1433_0325
+DATE: 1433-03-25
+TITLE: Participation-based targeting order
+SOURCE:
+https://sillok.history.go.kr/id/wda_11503025_002
+
+WHO:
+- 세종
+- 최윤덕
+- 동맹가첩목아 / 맹가첩목아 童猛哥帖木兒
+
+WHAT:
+- Secret instruction:
+  if Menggetemur aids the targeted enemy, he may be attacked;
+  if he does not aid them and sincerely submits, do not kill him.
+
+IMPORTANT:
+This is strong evidence that participation/non-participation was explicitly distinguished.
+
+RELATIONS:
+- 세종 -> 최윤덕 : COMMAND
+- 세종 -> 맹가첩목아 : CONDITIONAL_TARGET_STATUS
+
+--------------------------------------------------
+E1433_0507
+EVENT DATE: campaign assembled 1433-04-10; attack completed around 1433-04-19
+RECORD DATE: 1433-05-07
+TITLE: First Pajŏ River campaign report
+SOURCE:
+https://sillok.history.go.kr/id/kda_11505007_002
+
+REPORTER:
+- 최윤덕, via 박호문
+
+MAJOR COMMANDERS AND FORCE SIZES:
+- 최윤덕: 2,599
+- 이순몽: 2,515
+- 최해산: 2,070
+- 이각 李恪: 1,770
+- 이징석 李澄石: 3,010
+- 김효성 金孝誠: 1,888
+- 홍사석 洪師錫: 1,110
+
+TOTAL MOBILIZATION:
+- 10,000 Pyeongan regular cavalry/infantry
+- 5,000 Hwanghae troops
+
+PLACES:
+- 강계
+- 이만주 채리
+- 거여
+- 마천
+- 올라
+- 임합라 부모 채리
+- 팔리수
+- 임합라 채리
+
+OUTCOME:
+- Extensive killed/captured figures and property seizures reported by each column.
+- Choe's own column reported 4 Joseon dead and 20 wounded.
+- Kim Hyo-seong and Hong Sa-seok columns also reported wounded personnel.
+- All numerical outcomes are JOSEON COMMAND REPORTS, not independently verified.
+
+RELATIONS:
+- 세종 / state -> 최윤덕 : COMMAND
+- 최윤덕 -> six subordinate columns : COMMAND
+- commanders -> target settlements : MILITARY_ACTION
+- 박호문 -> court : REPORT
+
+--------------------------------------------------
+E1433_0516_A
+DATE: 1433-05-16
+TITLE: Promotions following first campaign
+SOURCE:
+https://sillok.history.go.kr/id/kda_11505016_003
+
+WHO:
+- 최윤덕
+- 권진
+- 이순몽
+- 안순
+- 이각
+- 이징석
+- 이숙치
+- 박안신
+- 남지
+- 김효성
+- 홍사석
+- 이사관
+- 권복
+- 안구경
+- 허조
+- 맹사성
+- 김종서
+- 세종
+
+WHAT:
+- Offices/promotions assigned.
+- Explicit context: reward of commanders' merit.
+
+RELATIONS:
+- 세종 -> campaign commanders : REWARD / APPOINTMENT
+
+--------------------------------------------------
+E1433_0516_B
+DATE: 1433-05-16
+TITLE: Enslaved persons bestowed as campaign rewards
+SOURCE:
+https://sillok.history.go.kr/id/kda_11505016_004
+
+WHO / WHAT:
+- 최윤덕: 10
+- 이순몽: 8
+- 이각: 6
+- 이징석: 6
+- 홍사석: 5
+- 김효성: 4
+
+IMPORTANT:
+Represent this according to the historical institution of the period;
+do not sanitize it as a generic "prize".
+
+RELATIONS:
+- state -> commanders : REWARD
+
+--------------------------------------------------
+E1433_0517
+DATE: 1433-05-17
+TITLE: Welfare and commemoration for campaign dead and sick
+SOURCE:
+https://sillok.history.go.kr/id/kda_11505017_002
+
+WHO:
+- 세종
+- 안을경 安乙敬 and other named/unnamed dead
+- 군관
+- 군졸
+- bereaved households
+
+WHAT:
+For those killed:
+- ritual for the dead
+- military officers: rice + beans 5 seok each
+- soldiers: 3 seok
+- household service exemption: 5 years
+
+For those who died from illness:
+- officers: rice + beans 3 seok
+- soldiers: 2 seok
+- exemption: 2 years
+
+For loss of horse:
+- exemption: 2 years
+
+RELATIONS:
+- state -> dead soldiers : HONOR
+- state -> bereaved households : WELFARE
+- state -> soldiers/officers : COMPENSATION
+
+--------------------------------------------------
+E1433_0610
+DATE: 1433-06-10
+TITLE: Menggetemur conveys criticism of indiscriminate campaigning
+SOURCE:
+https://sillok.history.go.kr/id/wda_11506010_002
+
+WHO:
+- 지함 池含
+- 맹가첩목아
+- 임합라
+- 이만주
+
+WHAT:
+- Ji Ham returned from Almuha and reported Menggetemur's statements.
+- Menggetemur asserted that Im Hab-ra was the real leader of the attack
+  and Yi Manju had tried to stop it.
+- He criticized the campaign for failing to distinguish innocent from guilty.
+- Requested return of relatives captured at Pajŏ River.
+
+CERTAINTY:
+This is a reported statement by Menggetemur, not independently established fact.
+
+RELATIONS:
+- 맹가첩목아 -> 조선 : CLAIM / DIPLOMATIC_PROTEST
+- 지함 -> 세종 : REPORT
+
+--------------------------------------------------
+E1433_0810
+DATE: 1433 leap-08-10
+TITLE: Ming emperor responds to conflicting Joseon/Jurchen accounts
+SOURCE:
+https://sillok.history.go.kr/id/wda_11508110_001
+
+WHO:
+- 선덕제
+- 맹날가래 孟捏哥來
+- 최진 崔眞
+- 세종
+- 양목답올
+- 살만답실리
+- 맹가첩목아
+- 범찰
+- 이만주
+- 아라답
+
+WHAT:
+- Ming court received conflicting accounts.
+- Imperial edict explicitly stated truth/falsehood could not be clearly determined.
+- Ordered return of captives, livestock, documents etc. by relevant parties.
+- Ordered parties to avoid future mutual intrusion.
+
+IMPORTANT:
+Do NOT encode this as "Ming ruled Joseon guilty."
+Encode as mediation/superior imperial-order intervention amid conflicting accounts.
+
+RELATIONS:
+- 선덕제 -> 조선 : MEDIATION / IMPERIAL_ORDER
+- 선덕제 -> Jurchen actors : MEDIATION / IMPERIAL_ORDER
+- 이만주 side -> Ming : CLAIM
+- Joseon -> Ming : CLAIM
+
+--------------------------------------------------
+E1434_0803
+DATE: 1434-08-03
+TITLE: Debate over Fancha, defensive posture, and command at Hoeryŏng
+SOURCE:
+https://sillok.history.go.kr/id/kda_11608003_001
+
+WHO:
+- 세종
+- 범찰
+- 최윤덕
+- 이징옥 李澄玉
+- 하한 河漢
+- 심도원 沈道源
+- 안숭선
+
+WHERE:
+- 알목하
+- 영북진
+- 백안수소
+- 회령진
+
+WHAT:
+- Intelligence suggested Fancha might harm the Yŏngbuk commander and move toward Pajŏ River.
+- Court explicitly noted truth/falsity was uncertain.
+- Debate over whether frontier commander should confront the claim or covertly observe.
+- Choe Yun-deok advocated moving experienced Yi Jing-ok to Hoeryŏng.
+- Sejong accepted Ahn Sung-seon's proposal to observe secretly rather than provoke on uncertain intelligence.
+
+RELATIONS:
+- local intelligence -> court : INTELLIGENCE
+- 최윤덕 -> 세종 : POLICY_ADVICE
+- 안숭선 -> 세종 : POLICY_ADVICE
+- 세종 -> frontier : CAUTIOUS_MONITORING
+
+--------------------------------------------------
+E1434_1024
+DATE: 1434-10-24
+TITLE: Hoeryŏng/Yŏngbuk administrative-defense reorganization
+SOURCE:
+https://sillok.history.go.kr/id/kda_11610024_005
+
+WHO:
+- 함길도 감사
+- 성달생 成達生
+- 심도원 沈道源
+- 이징옥 李澄玉
+- 세종
+
+WHAT:
+- Debate over permanent exchange/reorganization of Yŏngbuk and Hoeryŏng.
+- Hoeryŏng identified as first-order strategic point.
+- Consideration of farmland, population, defense and administrative viability.
+- Court accepted the proposal.
+
+RELATIONS:
+- field officials -> court : BORDER_ADMIN_POLICY
+- court -> Hoeryŏng/Yŏngbuk : ADMIN_REORGANIZATION
+
+--------------------------------------------------
+E1435_0113
+EVENT DATE: 1435-01-13
+RECORD DATE: 1435-01-18
+TITLE: 2,700 Oryanghap cavalry besiege Yŏyŏn fortress
+SOURCE:
+https://sillok.history.go.kr/id/wda_11701018_002
+
+WHO:
+- 김윤수 金允壽
+- 이진 李震
+- 여성렬 余成烈
+- 김수연 金壽延
+- Oryanghap force c. 2,700
+- unnamed soldiers
+
+WHAT:
+- Yŏyŏn fortress besieged.
+- defenders fought from morning into afternoon.
+- Joseon report says c. 90 enemies / 60 horses hit.
+- Kim Yun-su wounded in thumb.
+- 4 soldiers wounded; 1 died.
+- reinforcement requested.
+
+RELATIONS:
+- Oryanghap -> Yŏyŏn : MILITARY_ATTACK
+- 김윤수/이진/여성렬/김수연 -> defenders : COMMAND
+- defenders -> Oryanghap : DEFENSE
+
+--------------------------------------------------
+E1435_0312
+DATE: 1435-03-12
+TITLE: Relief for newly resettled northern population
+SOURCE:
+https://sillok.history.go.kr/id/kda_11703012_005
+
+WHERE:
+- 길주 이북
+- 회령
+- 경원
+
+WHAT:
+- Severe snow killed livestock.
+- Newly relocated settlers' farm cattle and warhorses heavily affected.
+- Grain/fodder/transport used for relief.
+
+RELATIONS:
+- provincial government -> settlers : RELIEF
+- provincial government -> military livestock : LOGISTICS
+
+--------------------------------------------------
+E1435_0408
+DATE: 1435-04-08
+TITLE: Frontier livelihoods and settler retention
+SOURCE:
+https://sillok.history.go.kr/id/kda_11704008_004
+
+WHAT:
+- Hamgil provincial commander reports problems of settlers,
+  cultivation, flight, agricultural cattle, warhorses.
+- Demonstrates that expansion/defense required continuous civilian settlement policy.
+
+RELATIONS:
+- field command -> court : REPORT
+- state -> settlers : RESETTLEMENT / AGRICULTURAL_POLICY
+
+--------------------------------------------------
+E1435_0719
+DATE: 1435-07-19
+TITLE: Jongseong and Gongseong created by dividing households
+SOURCE:
+https://sillok.history.go.kr/id/kda_11707019_002
+
+WHAT:
+- 400 Hoeryŏng households separated to establish Jongseong county.
+- 300 Kyŏngwŏn households separated to establish Gongseong county.
+- officials also held military command roles.
+
+RELATIONS:
+- state -> population : BORDER_ADMINISTRATION / RESETTLEMENT
+- state -> frontier territory : ADMIN_REORGANIZATION
+
+--------------------------------------------------
+E1435_0726
+DATE: 1435-07-26
+TITLE: Punishment for manipulation and evasion in resettlement
+SOURCE:
+https://sillok.history.go.kr/id/wda_11707026_004
+
+WHO:
+- local clerks / inspectors
+- local elites
+- magistrates
+- migrant households
+
+WHAT:
+- Local agents accused of hiding wealthy households and selecting poor ones.
+- Penalties included flogging and forced relocation.
+- Returnees were punished and re-assigned to Kyŏngwŏn/Hoeryŏng.
+
+IMPORTANT:
+Shows coercive costs of border-building.
+Do not portray resettlement as purely voluntary/nationally harmonious.
+
+RELATIONS:
+- state -> local agents : ACCOUNTABILITY / PUNISHMENT
+- state -> households : COERCIVE_RESETTLEMENT
+
+--------------------------------------------------
+E1435_0918
+DATE: 1435-09-18
+TITLE: Reward and punishment after Yŏyŏn fighting
+SOURCE:
+https://sillok.history.go.kr/id/kda_11709018_003
+
+WHO:
+- 김윤수
+- 장사우 張思祐
+- 배철 裵哲
+- unnamed dead soldiers
+- unnamed negligent soldiers/overseers
+- 병조
+- 세종
+
+WHAT:
+- dead: posthumous local office, funeral aid, household-service exemption
+- Kim Yun-su: credited with crossing river and cutting enemy retreat
+- Jang Sa-u: pursued enemy
+- Bae Cheol and others: fought/pursued and recovered plunder
+- meritorious personnel: one-grade promotion
+- negligent personnel: punishment under law
+
+RELATIONS:
+- state -> meritorious soldiers : REWARD
+- state -> dead/bereaved : WELFARE / HONOR
+- state -> negligent personnel : ACCOUNTABILITY / PUNISHMENT
+
+--------------------------------------------------
+E1436_0619
+DATE: 1436 leap-06-19
+TITLE: Sejong sends collected anti-incursion proposals to Yi Cheon
+SOURCE:
+https://sillok.history.go.kr/id/kda_11806119_002
+
+WHO:
+- 세종
+- 이천
+- unnamed fourth-rank-and-above proposal writers
+- 이만주 mentioned
+
+WHAT:
+- Sejong collected and copied anti-incursion policy proposals.
+- Sent them to Yi Cheon, Pyeongan commander.
+- Told Yi Cheon that western defense had been entrusted to him and asked
+  him to evaluate proposals and submit better plans.
+
+SIGNIFICANCE:
+Yi Cheon is clearly the policy-to-field bridge BEFORE the 1437 campaign.
+
+RELATIONS:
+- central officials -> 세종 : POLICY_ADVICE
+- 세종 -> 이천 : POLICY_TRANSFER / COMMAND
+- 이천 -> 세종 : expected FEEDBACK
+
+--------------------------------------------------
+E1436_1101
+DATE: 1436-11-01
+TITLE: Four Counties defense plans submitted
+SOURCE:
+https://sillok.history.go.kr/id/kda_11811001_005
+
+WHO:
+- 김종서
+- 정흠지
+- central government
+
+WHAT:
+- Kim Jong-seo and Jeong Heum-ji separately submitted plans concerning
+  defense of the Four Counties area.
+
+RELATIONS:
+- 김종서 -> court : POLICY_ADVICE
+- 정흠지 -> court : POLICY_ADVICE
+
+--------------------------------------------------
+E1436_1127
+DATE: 1436-11-27
+TITLE: Personnel, firearms and Four Counties defense
+DAY INDEX:
+https://sillok.history.go.kr/search/inspectionDayList.do?did=kda_11811027&id=kda_118110
+
+VERIFIED SUBARTICLE:
+https://sillok.history.go.kr/id/kda_11811027_001
+
+WHO:
+- 세종
+- 이징옥
+- 김종서
+- 정흠지
+- 병조
+- frontier officials
+
+WHAT:
+- Sejong instructed Yi Jing-ok about combining force with humane treatment.
+- Military ministry's Four Counties defense policy ordered into effect.
+- Firearms training officials assigned to Jasŏng, Gangye etc.
+- Kim Jong-seo and Jeong Heum-ji disagreed over moving headquarters.
+
+RELATIONS:
+- central -> frontier : COMMAND / DEFENSE_REFORM
+- 김종서 -> court : POLICY_ADVICE
+- 정흠지 -> court : POLICY_DISAGREEMENT
+
+--------------------------------------------------
+E1437_0611
+DATE: 1437-06-11
+TITLE: Yi Cheon submits three strategies for punishing raiders
+SOURCE:
+https://sillok.history.go.kr/id/wda_11906011_002
+
+WHO:
+- 이천
+- 세종
+
+WHAT:
+- Yi Cheon accepts responsibility for failing to intercept recent raiders.
+- Argues renewed military punishment may be necessary.
+- Warns large obvious expedition could allow enemy to hide and make
+  military show ineffective.
+- Presents multiple strategic alternatives.
+
+RELATIONS:
+- 이천 -> 세종 : REPORT / SELF_ACCOUNTABILITY / MILITARY_ADVICE
+
+--------------------------------------------------
+E1437_0820
+DATE: 1437-08-20
+TITLE: Choe Yun-deok's fortification ideas passed to frontier command
+SOURCE:
+https://sillok.history.go.kr/id/kda_11908020_001
+
+WHO:
+- 최윤덕
+- 세종
+- 함길도 도절제사
+- (Yi Cheon belongs to parallel western-front context; do not merge offices)
+
+WHAT:
+- Choe Yun-deok recommended reinforcing parapets, fighting platforms,
+  ditches and permanent watch arrangements based on previous Gangye experience.
+- Shows long-term transmission of veteran frontier knowledge.
+
+RELATIONS:
+- 최윤덕 -> 세종 : DEFENSE_ADVICE
+- 세종 -> frontier commander : COMMAND / FORTIFICATION
+
+--------------------------------------------------
+E1437_0914
+DATE: 1437-09-14
+EVENT DATE IN REPORT: 1437-09-07 departure
+TITLE: Yi Cheon's forces divide into three routes and cross Yalu
+SOURCE:
+https://sillok.history.go.kr/id/kda_11909014_003
+
+WHO / FORCE:
+- 이천 李蕆
+- 이화 李樺: 1,818
+- 정덕성 鄭德成: 1,203
+- 홍사석: with Yi Cheon
+- 이진: with Yi Cheon
+- Yi Cheon main force: 4,772
+
+WHERE:
+- 이산
+- 강계
+- 압록강
+- 홍타리
+- 아한
+- 옹촌
+- 오자점
+- 오미부
+
+RELATIONS:
+- 이천 -> subordinate forces : COMMAND
+- armies -> Yalu frontier : DEPLOYMENT / CROSS_BORDER_OPERATION
+
+--------------------------------------------------
+E1437_0922
+EVENT DATES: 1437-09-07 through 09-16
+RECORD DATE: 1437-09-22
+TITLE: Second Pajŏ River expedition victory report
+SOURCE:
+https://sillok.history.go.kr/id/wda_11909022_001
+
+WHO:
+- 이천
+- 이화
+- 정덕성
+- various unnamed forces
+- 최정안 mentioned as separate victory reporter
+
+WHAT:
+- Three armies crossed Yalu.
+- Multiple settlements/farms searched/burned.
+- fighting on several days.
+- firearms used when enemy attacked formation.
+- reported total enemy killed/captured: 60.
+- Joseon loss reported: one Hwanghae volunteer killed by arrow.
+
+IMPORTANT:
+All military outcome numbers are contemporary Joseon reports.
+
+RELATIONS:
+- Yi Cheon command network : COMMAND
+- Joseon armies -> target settlements : MILITARY_ACTION
+- field -> court : VICTORY_REPORT
+
+--------------------------------------------------
+E1438_0729
+DATE: 1438-07-29
+TITLE: Sejong requests Kim Jong-seo's assessment of Fancha vs Dongchang
+SOURCE:
+https://sillok.history.go.kr/id/wda_12007029_003
+
+WHO:
+- 세종
+- 김종서
+- 범찰 凡察
+- 동창 童倉
+- 맹가첩목아 mentioned
+
+WHAT:
+- Sejong asks Kim Jong-seo, because of his long frontier experience,
+  where Jurchen loyalties actually lie.
+- Kim responds with a detailed assessment.
+
+DOCUMENT:
+source = Sillok
+embeddedDocumentAuthor = 김종서
+documentType = 회계
+
+RELATIONS:
+- 세종 -> 김종서 : INTELLIGENCE_REQUEST
+- 김종서 -> 세종 : INTELLIGENCE_REPORT
+
+--------------------------------------------------
+E1439_0510
+DATE: 1439-05-10
+TITLE: Kim Jong-seo reports rumor-triggered revenge mobilization risk
+SOURCE:
+https://sillok.history.go.kr/id/kda_12105010_001
+
+WHO:
+- 김종서
+- 거을가개
+- 도을온
+- 조석강
+- local Jurchen actors
+
+WHAT:
+- A false rumor about Gŏŭl-gagae's death spread.
+- His descendants and associates reportedly considered retaliation.
+- Doŭl-on informed Kim Jong-seo.
+- Kim explained the rumor was false and de-escalated the situation.
+
+DOCUMENT:
+embeddedDocumentAuthor = 김종서
+documentType = 치계
+
+RELATIONS:
+- 도을온 -> 김종서 : INTELLIGENCE
+- 김종서 -> Jurchen actors : DIPLOMATIC_DEESCALATION
+- 김종서 -> court : REPORT
+
+--------------------------------------------------
+E1439_0617
+DATE: 1439-06-17
+TITLE: Multiple Jurchen informants warn of planned raids
+SOURCE:
+https://sillok.history.go.kr/id/kda_12106017_002
+
+WHO includes:
+- 세종
+- 김종서
+- 나읍대 羅邑大
+- 마기 麽氣
+- 야오시 耶吾時
+- 라라토
+- 타롱합마홀
+- 단아롱합
+
+WHAT:
+- Information from Jurchen actors about planned raids.
+- Some potential raiders were reportedly persuaded to withdraw.
+- Demonstrates cross-border HUMINT and selective cooperation.
+
+RELATIONS:
+- Jurchen informants -> Joseon : INTELLIGENCE
+- 세종 -> 김종서 : POLICY / INSTRUCTION
+
+--------------------------------------------------
+E1440_0117
+DATE: 1440-01-17
+TITLE: Kim Jong-seo defends his northern administration
+SOURCE:
+https://sillok.history.go.kr/id/kda_12201017_001
+
+WHO:
+- 김종서
+- 사헌부
+- 세종
+
+WHAT:
+Kim Jong-seo states that after being entrusted with northern affairs he:
+- moved tens of thousands of people to frontier areas
+- converted grassland to fields
+- built Hoeryŏng, Kyŏngwŏn, Kyŏnghŭng walls and smaller forts
+- built Kapsan defenses / enlarged Hyesan
+- planned Kilju fortress
+- built transport vessels to move rice for military supplies
+
+IMPORTANT:
+This is Kim Jong-seo's self-defensive memorial, so encode content as
+contemporary self-report even where individual works may be corroborated elsewhere.
+
+RELATIONS:
+- 김종서 -> 세종 : SELF_DEFENSE / REPORT
+- 사헌부 -> 김종서 : ACCOUNTABILITY
+
+--------------------------------------------------
+E1440_0407
+DATE: 1440-04-07
+TITLE: Kim Jong-seo responds to fear and possible Jurchen flight
+SOURCE:
+https://sillok.history.go.kr/id/kda_12204007_001
+
+WHO:
+- 김종서
+- 동자음파
+- 동창
+- 범찰
+- provincial observer / central government
+
+WHAT:
+- Rumor that Joseon intended to kill the group caused flight anxiety.
+- Kim went to Hoeryŏng with troops to assess situation.
+- Combines conciliation with coercive capacity.
+
+RELATIONS:
+- rumor -> Dongchang/Fancha group : FEAR
+- 김종서 -> groups : DIPLOMATIC_MANAGEMENT
+- 김종서 -> central : REPORT
+
+--------------------------------------------------
+E1440_1126
+DATE: 1440-11-26
+TITLE: Detailed force requirements for northeastern defensive network
+SOURCE:
+https://sillok.history.go.kr/id/kda_12211026_005
+
+WHAT:
+- Hamgil governor/commander assesses relocation of forts and new settlements.
+- Gives explicit troop requirements:
+  300, 400, 400, 1,000 etc depending on positions.
+- Total c. 2,100 regular soldiers required for proposed new/relocated positions.
+- Emphasis on mutual visibility, relief and defensible geography.
+
+RELATIONS:
+- field administration -> court : DEFENSE_PLANNING
+- state -> frontier : TROOP_ALLOCATION / FORTIFICATION
+
+--------------------------------------------------
+E1441_0129
+DATE: 1441-01-29
+TITLE: Hwangbo In sent to restructure northeastern garrisons
+SOURCE:
+https://sillok.history.go.kr/id/kda_12301029_002
+
+WHO:
+- 황보인
+- central government
+
+WHAT:
+- Jongseong moved toward Suju river frontier.
+- Multiple forts created around Jongseong.
+- additional forts created around Hoeryŏng.
+- Onseong established in Daon field.
+- settlers from southern provinces and Kyŏngwŏn moved in.
+- new forts also established in Kyŏngwŏn area.
+
+RELATIONS:
+- central government -> 황보인 : INSPECTION / COMMAND
+- state -> frontier : FORTIFICATION / RESETTLEMENT / BORDER_ADMINISTRATION
+
+--------------------------------------------------
+E1441_0519
+DATE: 1441-05-19
+TITLE: Strategic post moved to Asanjang
+SOURCE:
+https://sillok.history.go.kr/id/kda_12305019_002
+
+WHO:
+- 황보인
+
+WHAT:
+- Geonwon post abolished/moved to Asanjang at Hwangbo In's request.
+- Asan described as strategic point for Kyŏngwŏn.
+
+RELATIONS:
+- 황보인 -> court : DEFENSE_ADVICE
+- state -> frontier : FORT_RELOCATION
+
+--------------------------------------------------
+E1442_1022
+DATE: 1442-10-22
+TITLE: Defense alert and prohibition on unauthorized river crossing
+SOURCE:
+https://sillok.history.go.kr/id/kda_12410022_001
+
+WHO:
+- 세종
+- Pyeongan/Hamgil governors and commanders
+- 범찰
+- 이장가's son mentioned
+- Ming frontier military source
+
+WHAT:
+- intelligence warns of a possible raid.
+- commanders told to increase vigilance at forts/posts.
+- unauthorized crossing of river to capture hawks prohibited.
+
+RELATIONS:
+- external intelligence -> Joseon : INTELLIGENCE
+- 세종 -> frontier commanders : DEFENSE_ORDER / BORDER_CONTROL
+
+--------------------------------------------------
+E1443_0914_1005
+EVENT DATE: 1443-09-14 and subsequent raid
+RECORD DATE: 1443-10-05
+TITLE: Jurchen informants enable prepared defense against 1,000+ Udige
+SOURCE:
+https://sillok.history.go.kr/popup/print.do?gubun=kor&id=kda_12510005_001
+
+WHO:
+- 한서룡 韓瑞龍
+- 김효성
+- 배마라가 裵磨剌可
+- 창고리 昌古里
+- multiple Udige, c. 1,000+
+
+WHAT:
+- Baemalaga warned in advance that 1,000+ Udige had departed to raid.
+- Han Seo-ryong had garrisons prepare.
+- On day of raid, Changgori provided additional warning.
+- Joseon forces were able to prepare and repel attackers.
+- Court judged both informants' contributions major.
+
+RELATIONS:
+- 배마라가 -> Joseon : INTELLIGENCE
+- 창고리 -> Joseon : INTELLIGENCE
+- 한서룡 -> garrisons : COMMAND
+- state -> informants : REWARD
+- garrisons -> attackers : DEFENSE
+
+--------------------------------------------------
+E1443_1023
+DATE: 1443-10-23
+TITLE: Dong Sorogamu proposes joint attack; court declines to commit
+SOURCE:
+https://sillok.history.go.kr/id/kda_12510023_003
+
+WHO:
+- 동소로가무 童所老加茂
+- 도을온
+- 낭복아한
+- 예조
+- 의정부
+- Hoeryŏng commander
+
+WHAT:
+- Dong Sorogamu asked for wall construction and regulation of envoys.
+- Proposed using Five Garrisons troops together with Jurchen allies
+  to destroy Guju Udige.
+- Court accepted wall/administrative aspects but avoided approving
+  the offensive proposal.
+
+SIGNIFICANCE:
+Strong case of alliance/attack proposal being limited by court.
+
+RELATIONS:
+- 동소로가무 -> court : MILITARY_PROPOSAL
+- court -> 동소로가무 : LIMITED_ACCEPTANCE / NON_ESCALATION
+
+--------------------------------------------------
+E1445_0519
+DATE: 1445-05-19
+TITLE: Coastal watch and signal system improvement
+SOURCE:
+https://sillok.history.go.kr/id/kda_12705019_002
+
+WHO:
+- 황보인
+- 세종
+
+WHAT:
+- Hwangbo In proposes relocating naval stations and rebuilding watchtowers.
+- Watch posts to use five soldiers.
+- Smoke and cannon signaling lines to be improved.
+
+RELATIONS:
+- 황보인 -> 세종 : DEFENSE_ADVICE
+- state -> frontier : SIGNAL_SYSTEM / FORTIFICATION
+
+--------------------------------------------------
+E1445_0806
+DATE: 1445-08-06
+TITLE: Sejong warns against complacency in frontier defense
+SOURCE:
+https://sillok.history.go.kr/id/kda_12708006_002
+
+WHO:
+- 세종
+- Pyeongan/Hamgil commanders
+
+WHAT:
+- Existing patrol/watch system had become vulnerable to complacency.
+- Refers to previous near-failure at thorn defenses.
+- Discusses iron caltrops and trap defenses.
+- Also worries that such devices could injure friendly/submitting Jurchens.
+
+RELATIONS:
+- 세종 -> frontier commanders : DEFENSE_REFORM
+- state : RISK_BALANCING
+
+--------------------------------------------------
+E1445_1027
+DATE: 1445-10-27
+TITLE: Sejong orders balanced treatment of remaining Odori
+SOURCE:
+https://sillok.history.go.kr/id/kda_12710027_001
+
+WHO:
+- 세종
+- 함길도 도절제사
+- 동소로가무 and related groups
+- 황보인 mentioned
+
+WHAT:
+- Avoid simply allowing flight.
+- Also avoid excessive coercion that could become an issue with Ming.
+- Treat them generously but exercise control appropriately.
+
+RELATIONS:
+- 세종 -> frontier commander : DIPLOMATIC_POLICY
+- state -> Odori groups : CONCILIATION / CONTROL
+
+--------------------------------------------------
+E1446_0420
+DATE: 1446-04-20
+TITLE: Muchang raid exposes command and beacon failure
+SOURCE:
+https://sillok.history.go.kr/id/wda_12804020_005
+
+WHO:
+- 배찬 裵禶, Muchang magistrate
+- 김자옹 金自雍, provincial commander
+- 50+ raiders
+
+WHAT:
+- 5 people killed
+- 17 captured
+- 4 horses, 8 cattle taken
+- Bae Chan crossed river in pursuit but failed to recover captives
+- Sillok explicitly attributes failure to lax military orders and beacon vigilance
+  by Bae Chan and Kim Ja-ong.
+
+RELATIONS:
+- raiders -> Muchang : MILITARY_ATTACK
+- 배찬 -> raiders : PURSUIT
+- record -> 배찬/김자옹 : ACCOUNTABILITY
+
+CAUSAL STATUS:
+explicit
+
+--------------------------------------------------
+E1447_0107
+DATE/RECORD NOTE:
+article dated 1447-01-07 but describes construction work beginning Feb 15
+and ending Mar 15; retain Sillok article date and separately encode work dates.
+SOURCE:
+https://sillok.history.go.kr/id/kda_12901007_001
+
+WHO:
+- 황보인
+- Pyeongan labor population
+
+WHAT:
+- major frontier wall construction
+- 5,740 provincial people used for one section
+- 400 for another section
+- walls, gate, barbican, signal platform
+
+RELATIONS:
+- state -> population : LABOR_MOBILIZATION
+- 황보인 -> frontier : FORTIFICATION
+
+--------------------------------------------------
+E1447_LUNAR4_10
+DATE: 1447 leap-04-10
+TITLE: Hwangbo In reports integrated western/eastern frontier reorganization
+SOURCE:
+https://sillok.history.go.kr/id/kda_12904110_001
+
+WHO:
+- 황보인
+- central government
+
+WHAT:
+- proposals on newly established Samsu,
+- settler administration,
+- civilian burden,
+- local defense,
+- relocation of households,
+- military horse burden,
+- offices and troop commands.
+
+SIGNIFICANCE:
+Excellent Lasswell event because policy decisions redistribute
+people, military service, movement burden and administrative resources.
+
+RELATIONS:
+- 황보인 -> court : POLICY_REPORT
+- state -> settlers/soldiers/local offices : RESOURCE_ALLOCATION / ADMIN_REFORM
+
+--------------------------------------------------
+E1447_0708
+DATE: 1447-07-08
+TITLE: Large-scale wall construction in Hamgil frontier
+SOURCE:
+https://sillok.history.go.kr/id/wda_12907008_002
+
+WHO:
+- 황보인
+- 8,526 Hamgil people
+- 1,000 Kapsan/Samsu people
+
+WHAT:
+- major stone/earth wall works around Hoeryŏng and Samsu.
+- Sillok records labor totals and lengths.
+
+RELATIONS:
+- state -> civilian labor : LABOR_MOBILIZATION
+- 황보인 -> frontier : FORTIFICATION
+
+--------------------------------------------------
+E1448_0307
+DATE: 1448-03-07
+TITLE: Debate over priority between long walls and town walls
+SOURCE:
+https://sillok.history.go.kr/id/kda_13003007_001
+
+WHO:
+- 세종
+- 하연 河演
+- 황보인
+- 박종우
+- 김종서
+- 정분
+- 정갑손
+
+WHAT:
+- Debate over whether to complete long frontier walls first
+  or town walls first.
+- Ha Yeon, Park Jong-u, Kim Jong-seo and Jeong Bun argued for
+  town walls as population refuges against major attacks.
+
+RELATIONS:
+- 세종 -> senior ministers : POLICY_QUERY
+- ministers -> 세종 : DEFENSE_ADVICE
+
+--------------------------------------------------
+E1449_0707
+DATE: 1449-07-07
+TITLE: Bugŏ moved and upgraded to Puryŏng Protectorate; garrison established
+SOURCE:
+https://sillok.history.go.kr/id/kda_13107007_003
+
+WHAT:
+- Bugŏ county moved to Seokbo station in Hoeryŏng.
+- upgraded to Puryŏng Dohobu.
+- a military garrison (鎭) established.
+- Sakchŏn renamed Sakju.
+
+RELATIONS:
+- state -> Puryŏng : BORDER_ADMINISTRATION / GARRISON_ESTABLISHMENT
+
+IMPORTANT:
+Use as a working endpoint for the visualization.
+Do NOT describe 1449 as the moment all northern conflict permanently ended.
+
+==================================================
+C. SILLOK GEOGRAPHY ENTRIES — USEFUL FOR 6-GARRISON CHRONOLOGY
+==================================================
+
+Hoeryŏng Dohobu geography
+https://sillok.history.go.kr/popup/viewer.do?id=kda_40011006
+
+Verified summary:
+- after Menggetemur's death, Hoeryŏng/Almuha strategic reorganization accelerated
+- in Sejong 16, Yŏngbuk garrison moved and a separate Hoeryŏng garrison established
+- later upgraded to Dohobu
+
+Jongseong Dohobu geography
+https://sillok.history.go.kr/id/kda_40011007
+
+Verified summary:
+- Sejong 16: Yŏngbuk moved; Hoeryŏng established at Almuha
+- Sejong 17: Jongseong county established
+- Sejong 22: administrative center moved toward Suju
+- Sejong 23: upgraded to Dohobu and further southern households moved in
+
+Puryŏng Dohobu geography
+https://sillok.history.go.kr/id/kda_40011010
+
+Verified summary:
+- Yŏngbuk defensive post antecedents
+- Sejong 31: Bugŏ abolished/moved; Puryŏng Dohobu established with garrison
+
+Kyŏngwŏn Dohobu geography
+https://sillok.history.go.kr/popup/print.do?gubun=kor&id=wda_40011005
+
+Verified summary:
+- Sejong 16: decision to restore/strengthen old frontier position,
+  construct wall and move southern households there
+- later converted to stone fortification
+- Sejong 24: garrison commander established
+
+==================================================
+D. SEOJEONGNOK METADATA
+==================================================
+
+URL:
+https://encykorea.aks.ac.kr/Article/E0028169
+
+TITLE:
+서정록 西征錄
+
+ATTRIBUTION:
+이천 李蕆
+
+SURVIVING EDITION:
+- 1 woodblock volume
+- includes postscripts by descendant 이순 李純 and governor 윤금손 尹金孫
+- preserved at Seoul National University Kyujanggak according to Encyclopedia
+
+PUBLICATION:
+1516
+
+CONTENT RANGE:
+1432-1437
+
+CONTENT TYPES described by Encyclopedia:
+- Jurchen relations
+- military campaign / suppression
+- resettlement
+- taxation
+- relief
+- local reports
+- court responses
+
+REFERENCE EDITION:
+『서정록』, 임홍빈 역편, 국방부전사편찬위원회, 1989
+
+IMPORTANT:
+Until actual Seojeongnok text is obtained,
+do not create event-level edges from the encyclopedia summary alone.
+
+==================================================
+E. INITIAL AUTHORITY LIST FROM VERIFIED ARTICLES
+==================================================
+
+JOSEON CENTRAL / POLICY
+세종
+황희 黃喜
+권진 權軫
+허조 許稠
+하경복 河敬復
+정흠지 鄭欽之
+조말생 趙末生
+안숭선 安崇善
+안순 安純
+맹사성 孟思誠
+심도원 沈道源
+성달생 成達生
+황보인 皇甫仁
+하연 河演
+박종우 朴從愚
+정분 鄭苯
+정갑손 鄭甲孫
+김종서 金宗瑞
+
+JOSEON MILITARY / FRONTIER
+박초 朴礎
+최윤덕 崔閏德
+이천 李蕆
+최해산 崔海山
+이순몽 李順蒙
+이각 李恪
+이징석 李澄石
+김효성 金孝誠
+홍사석 洪師錫
+박호문 朴好問
+최치운 崔致雲
+이진 李震
+여성렬 余成烈
+김수연 金壽延
+김윤수 金允壽
+장사우 張思祐
+배철 裵哲
+이징옥 李澄玉
+하한 河漢
+지함 池含
+이화 李樺
+정덕성 鄭德成
+한서룡 韓瑞龍
+배찬 裵禶
+김자옹 金自雍
+
+JURCHEN / EXTERNAL ACTORS
+이만주 李滿住
+유을합 劉乙哈
+임합라 林哈剌
+맹가첩목아 / 동맹가첩목아 童猛哥帖木兒
+범찰 凡察
+동창 童倉
+양목답올 楊木答兀
+살만답실리 撒滿答失里
+아라답 阿剌答
+도을온 都乙溫
+나읍대 羅邑大
+마기 麽氣
+야오시 耶吾時
+라라토 剌剌土
+타롱합마홀 打籠哈馬忽
+단아롱합 斷兒籠哈
+배마라가 裵磨剌可
+창고리 昌古里
+동소로가무 童所老加茂
+낭복아한 郞卜兒罕
+거을가개 巨乙加介
+동자음파 童者音波
+
+MING
+선덕제
+맹날가래 孟捏哥來
+최진 崔眞
+
+IMPORTANT:
+This authority list is NOT exhaustive.
+It contains only names directly verified in the seed articles above.
+Do not label this "all persons 1432-1449".
+
+==================================================
+F. REQUIRED DATA PRINCIPLES
+==================================================
+
+1. EVENT DATE != RECORD DATE
+If a report dated May describes an April battle, preserve both.
+
+2. CLAIM != FACT
+Yi Manju, Menggetemur, Ming, Joseon and other actors often report incompatible accounts.
+
+3. MILITARY OUTCOME NUMBERS
+Treat battlefield kill/capture counts as reported figures attributed to the reporting side.
+
+4. RESETTLEMENT
+Encode benefits AND coercion:
+- relief
+- farmland
+- defense
+- forced relocation
+- punishment for evasion
+- mortality
+
+5. FEEDBACK LOOPS
+Build temporal paths such as:
+
+field intelligence
+-> Kim Jong-seo
+-> royal court
+-> policy decision
+-> frontier commander
+-> local military action
+-> outcome
+-> report
+-> court
+-> reward / punishment / revised policy
+
+6. DO NOT MERGE:
+- all Jurchens
+- all Udige / Oryanghap / Odori
+- Yi Manju's group with Menggetemur/Fancha automatically
+- Pajŏ River campaign with the entire Four Counties/Six Garrisons process
+
+7. NO PROTAGONIST RANKING YET
+Compute trajectories and role transitions.
+Human author decides protagonist.

@@ -11,6 +11,11 @@ import { computeMetrics, dynamicCommunicability } from "../src/analysis/centrali
 import { toArcs } from "../src/model/deriveEdges.js";
 import { yearlyTrajectories } from "../src/analysis/trajectories.js";
 import { isValidBound, isDayPrecise, formatRange } from "../src/model/dates.js";
+import { evidenceScope, assertScope, select, countByClass, DEFAULT_SCOPE } from "../src/model/evidence.js";
+import { missingnessReport } from "../src/analysis/missingness.js";
+import { pathIdentityAssumptions, unresolvedNodeCount } from "../src/analysis/identitySensitivity.js";
+import { claimsOf, normalizeScene } from "../src/data/story.js";
+import { classifyWarnings } from "../src/model/validate.js";
 
 let passed = 0;
 const test = (name, fn) => { try { fn(); passed++; console.log("ok  ", name); } catch (e) { console.log("FAIL", name, "\n     ", e.message); process.exitCode = 1; } };
@@ -20,7 +25,7 @@ const C = (source, target, tMin, tMax = tMin, extra = {}) => ({
   tMin, tMax, timeKind: extra.kind || "instant", exact: tMin !== null && tMin === tMax && isDayPrecise(tMin),
   anchor: tMax ?? tMin, startDate: tMin ?? tMax, endDate: tMax ?? tMin,
   direction: extra.dir || "directed", certainty: "confirmed", pathEligible: extra.pathEligible ?? true,
-  evidenceStatus: "verified", provenance: "pack_v1_direct", sourceTypes: ["sillok"], theater: ["CENTRAL"]
+  evidenceStatus: "verified", evidenceClass: "DIRECT", provenance: "pack_v1_direct", sourceTypes: ["sillok"], theater: ["CENTRAL"]
 });
 const W = { from: "1432-00-00", to: "1449-99-99" };
 
@@ -41,7 +46,7 @@ test("validateData: 오류 0", () => {
 test("validateData: 결함 데이터를 실제로 잡아낸다", () => {
   const bad = structuredClone(DATA);
   const ev = (id) => bad.EVENTS.find((e) => e.id === id);
-  ev("E1432_1209").relations.push({ source: "NOBODY", target: "JO_SEJONG", layer: "POLICY", relationType: "x", provenance: "pack_v1_direct", causalStatus: "unknown", pathEligible: true });
+  ev("E1432_1209").relations.push({ source: "NOBODY", target: "JO_SEJONG", layer: "POLICY", relationType: "x", provenance: "pack_v1_direct", causalStatus: "UNKNOWN", pathEligible: true });
   ev("E1432_1211").recordDate = "1432-12-20";                                   // 사료 게재일과 불일치
   ev("E1432_1221").placeIds = ["PL_NOWHERE"];
   ev("E1433_0215").sourceIds = ["SRC_MISSING"];
@@ -78,9 +83,9 @@ test("duration contact: 도착 후 아직 지속 중이면 사용", () => {
 });
 test("범위 instant: strict는 순서가 확정될 때만 연결, possible은 UNCERTAIN으로 연결", () => {
   const cs = [C("A", "B", "1433-01-01", "1433-03-01"), C("B", "C", "1433-02-01")];
-  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "strict"), null);
-  const p = temporalPath(cs, ["A"], "C", W.from, W.to, "possible");
-  assert.ok(p && p.flag === "UNCERTAIN" && isTimeRespecting(p.steps, W.from, "possible"));
+  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "CERTAIN_ORDER"), null);
+  const p = temporalPath(cs, ["A"], "C", W.from, W.to, "TEMPORALLY_NOT_EXCLUDED");
+  assert.ok(p && p.flag === "UNCERTAIN" && isTimeRespecting(p.steps, W.from, "TEMPORALLY_NOT_EXCLUDED"));
 });
 test("범위 instant 뒤 확정 순서: strict 연결 + PARTIAL_ORDER, 도착은 범위 상한", () => {
   const p = temporalPath([C("A", "B", "1433-01-01", "1433-01-20"), C("B", "C", "1433-02-01")], ["A"], "C", W.from, W.to);
@@ -88,13 +93,13 @@ test("범위 instant 뒤 확정 순서: strict 연결 + PARTIAL_ORDER, 도착은
 });
 test("'기사일 이전'(tMin 미상) 관계: strict 경로에 쓰지 않음, possible에서는 UNCERTAIN", () => {
   const cs = [C("A", "B", null, "1433-02-01"), C("B", "C", "1433-03-01")];
-  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "strict"), null);
-  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "possible").flag, "UNCERTAIN");
+  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "CERTAIN_ORDER"), null);
+  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "TEMPORALLY_NOT_EXCLUDED").flag, "UNCERTAIN");
 });
 test("연·월 단위 관계에 가짜 순서를 매기지 않음: 같은 해 YEAR 관계 두 개는 strict 연결 불가", () => {
   const cs = [C("A", "B", "1434-00-00", "1434-99-99"), C("B", "C", "1434-00-00", "1434-99-99")];
-  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "strict"), null);
-  assert.equal(classifyPath(temporalPath(cs, ["A"], "C", W.from, W.to, "possible").steps, W.from), "UNCERTAIN");
+  assert.equal(temporalPath(cs, ["A"], "C", W.from, W.to, "CERTAIN_ORDER"), null);
+  assert.equal(classifyPath(temporalPath(cs, ["A"], "C", W.from, W.to, "TEMPORALLY_NOT_EXCLUDED").steps, W.from), "UNCERTAIN");
 });
 test("isTimeRespecting가 역행 경로를 거부", () => {
   const c1 = C("A", "B", "1433-02-01"), c2 = C("B", "C", "1433-01-01");
@@ -134,17 +139,17 @@ test("실제 데이터: 기본 표시는 pack v1 검증 관계만, legacy·해�
   assert.equal(all.length, idx.contacts.length);
 });
 test("실제 데이터: 분석 입력은 strict·경로 대상만, 제외 수를 보고", () => {
-  const a = analysisContacts(idx, W, "strict");
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
   assert.ok(a.contacts.every((c) => c.pathEligible && c.tMin !== null && c.tMax !== null && c.evidenceStatus === "verified"));
   assert.ok(a.excludedUncertain > 0, "기사일 이전 관계가 제외 수로 보고되어야 함");
   assert.ok(a.excludedAbout > 0, "'~에 관한' 관계가 제외 수로 보고되어야 함");
 });
 test("실제 데이터: strict earliest-arrival이 brute-force와 일치하고 모든 경로가 시간 순행", () => {
-  const cs = analysisContacts(idx, W, "strict").contacts;
+  const cs = analysisContacts(idx, W, "CERTAIN_ORDER").contacts;
   const nodes = [...new Set(cs.flatMap((c) => [c.source, c.target]))];
   const adj = buildAdjacency(cs);
   for (const s of nodes) {
-    const { arrival } = earliestArrival(adj, [s], W.from, W.to, "strict");
+    const { arrival } = earliestArrival(adj, [s], W.from, W.to, "CERTAIN_ORDER");
     const bf = new Map([[s, W.from]]);
     let changed = true;
     while (changed) {
@@ -162,19 +167,19 @@ test("실제 데이터: strict earliest-arrival이 brute-force와 일치하고 �
       if (v === s) continue;
       assert.equal(arrival.get(v), bf.get(v), `${s}→${v}`);
       if (arrival.has(v)) {
-        const p = temporalPath(cs, [s], v, W.from, W.to, "strict");
-        assert.ok(isTimeRespecting(p.steps, W.from, "strict"), `${s}→${v} 경로가 시간 역행`);
+        const p = temporalPath(cs, [s], v, W.from, W.to, "CERTAIN_ORDER");
+        assert.ok(isTimeRespecting(p.steps, W.from, "CERTAIN_ORDER"), `${s}→${v} 경로가 시간 역행`);
         assert.ok(["EXACT", "PARTIAL_ORDER"].includes(p.flag), `${s}→${v} strict 경로가 ${p.flag}`);
       }
     }
   }
 });
 test("실제 데이터: 피드백 루프는 시간 순행이며 strict에서 UNCERTAIN이 없음", () => {
-  const cs = analysisContacts(idx, W, "strict").contacts;
-  const loops = feedbackLoops(cs, "JO_SEJONG", W.from, W.to, "strict");
+  const cs = analysisContacts(idx, W, "CERTAIN_ORDER").contacts;
+  const loops = feedbackLoops(cs, "JO_SEJONG", W.from, W.to, "CERTAIN_ORDER");
   assert.ok(loops.length > 0, "세종 기준 루프가 하나도 없음");
   for (const l of loops) {
-    assert.ok(isTimeRespecting(l.steps, W.from, "strict"));
+    assert.ok(isTimeRespecting(l.steps, W.from, "CERTAIN_ORDER"));
     assert.notEqual(l.flag, "UNCERTAIN");
   }
 });
@@ -200,6 +205,47 @@ test("실제 데이터: level은 pack 증언만 사용(legacy 증언 무시)", (
   assert.equal(idx.levelAt("JO_LEEGAK", "1436-01-01"), "L4");
   // 증언 이전 시점은 기본 level
   assert.equal(idx.levelAt("JO_KIMJONGSEO", "1436-11-01"), idx.peopleById.JO_KIMJONGSEO.defaultLevel);
+});
+
+/* ---------------- 근거 선택기 ---------------- */
+test("evidence: 기본 범위는 DIRECT+NORMALIZED, LEGACY·INTERPRETATION은 opt-in", () => {
+  assert.deepEqual([...DEFAULT_SCOPE.classes].sort(), ["DIRECT", "NORMALIZED"]);
+  const items = [{ provenance: "pack_v1_direct" }, { provenance: "pack_v1_derived" }, { provenance: "inherited_v2" }, { provenance: "interpretation" }];
+  assert.equal(select(items, DEFAULT_SCOPE).length, 2);
+  assert.equal(select(items, evidenceScope({ includeLegacy: true })).length, 3);
+  assert.equal(select(items, evidenceScope({ includeLegacy: true, includeInterpretation: true })).length, 4);
+  assert.deepEqual(countByClass(items), { DIRECT: 1, NORMALIZED: 1, LEGACY: 1, INTERPRETATION: 1, UNKNOWN: 0 });
+});
+test("evidence: assertScope가 해석·legacy·불명 근거를 차단", () => {
+  assert.throws(() => assertScope([{ id: "x", provenance: "interpretation" }]), /interpretation mode/);
+  assert.throws(() => assertScope([{ id: "x", provenance: "inherited_v2" }]), /legacy/);
+  assert.throws(() => assertScope([{ id: "x", provenance: "unknown_provenance" }]), /불명/);
+  assert.doesNotThrow(() => assertScope([{ id: "x", provenance: "interpretation" }], evidenceScope({ includeInterpretation: true })));
+});
+test("missingness: 포함·제외 합계와 범주별 분포", () => {
+  const a = { contacts: [C("A", "B", "1433-01-01")], excludedUncertainList: [{ ...C("A", "C", null, "1433-02-01"), layer: "REPORT" }],
+    excludedAboutList: [], shown: [] };
+  const m = missingnessReport(a);
+  assert.equal(m.included, 1); assert.equal(m.excludedUncertain, 1);
+  assert.deepEqual(m.byLayer.map((r) => [r.key, r.included, r.excluded]), [["REPORT", 0, 1], ["COMMAND", 1, 0]]);
+  assert.equal(m.byPerson.find((p) => p.id === "C").excluded, 1);
+});
+test("identity: 다른 사건의 등장을 잇는 PROBABLE_SAME 경유 지점을 표시", () => {
+  const idx2 = { identityOf: { B: { status: "PROBABLE_SAME" }, D: { status: "VERIFIED_SAME" } }, peopleById: { B: { entityType: "person" }, D: { entityType: "person" } } };
+  const s1 = { from: "A", to: "B", contact: { eventId: "E1" } }, s2 = { from: "B", to: "C", contact: { eventId: "E2" } }, s3 = { from: "B", to: "C", contact: { eventId: "E1" } };
+  assert.deepEqual(pathIdentityAssumptions(idx2, [s1, s2]), [{ node: "B", inEvent: "E1", outEvent: "E2" }]);
+  assert.deepEqual(pathIdentityAssumptions(idx2, [s1, s3]), []);
+  assert.equal(unresolvedNodeCount(idx2, ["B", "D"]).unresolved, 1);
+});
+test("story: claim 하위호환 — claims 없는 문장·옛 narration 장면 변환", () => {
+  const c = claimsOf({ text: "t", eventIds: ["E"], sourceIds: ["S"], narrativeStatus: "normalized_summary", provenance: "pack_v1_direct" });
+  assert.equal(c.length, 1); assert.equal(c[0].evidenceClass, "DIRECT"); assert.equal(c[0].claimType, "FACTUAL");
+  const old = normalizeScene({ id: "X", title: "t", eventIds: ["E"], narration: "옛 서술" });
+  assert.equal(old.statements[0].claims[0].evidenceClass, "INTERPRETATION");
+});
+test("warnings: 허용 목록 대조 — expected / unexpected / stale", () => {
+  const r = classifyWarnings([{ code: "A", key: "1", message: "a" }, { code: "B", key: "2", message: "b" }], [{ code: "A", key: "1", reason: "r" }, { code: "C", key: "3", reason: "r" }]);
+  assert.equal(r.expected.length, 1); assert.equal(r.unexpected[0].code, "B"); assert.equal(r.stale[0].code, "C");
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", FAILURES above" : ""}`);

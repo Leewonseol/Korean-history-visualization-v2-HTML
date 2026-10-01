@@ -4,6 +4,9 @@
    - VERIFIED_WITH_EVENTS 도 '그 해 사건 전부'가 아니다(completeness: SEED_ONLY).
    - NOT_COVERED 는 '사건이 없었다'가 아니라 'pack v1에 검증 기사가 제공되지 않았다'는 뜻이다.
    - sourceIds: 그 해에 대해 pack v1이 제공한 실록 기사. geographySourceIds: 그 해를 서술한 지리지 항목.
+   - scopeStatus(vocab.COVERAGE_SCOPE): FULL / PARTIAL / NONE / UNKNOWN — 연도 중 조사 기간에 든 범위.
+       FULL은 '연도 전체가 조사 기간 안'일 뿐 모든 기사를 조사했다는 뜻이 아니다(completeness는 모두 SEED_ONLY 또는 NONE).
+       PARTIAL 연도(1432: 12-09부터, 1449: 07-07까지)를 FULL 연도와 사건 수로 비교하지 않는다. NONE(1444)은 0이 아니라 NA.
    ========================================================================== */
 
 const SEED = "SEED_ONLY";
@@ -13,13 +16,14 @@ const NOT_COVERED_NOTE =
 function y(year, coverageStatus, sourceIds, extra = {}) {
   return {
     year, coverageStatus, completeness: coverageStatus === "NOT_COVERED" ? "NONE" : SEED,
-    scope: "full_year", sourceIds, geographySourceIds: [], note: "", ...extra
+    scopeStatus: coverageStatus === "NOT_COVERED" ? "NONE" : "FULL",
+    scope: "full_year", scopeFrom: `${year}-01-01`, scopeTo: `${year}-12-30`, sourceIds, geographySourceIds: [], note: "", ...extra
   };
 }
 
 export const COVERAGE = [
   y(1432, "VERIFIED_WITH_EVENTS", ["SRC_1432_1209", "SRC_1432_1211", "SRC_1432_1221"],
-    { scope: "1432-12-09~", note: "작업 범위가 1432-12-09에서 시작. 그 이전은 범위 밖." }),
+    { scope: "1432-12-09~", scopeStatus: "PARTIAL", scopeFrom: "1432-12-09", note: "작업 범위가 1432-12-09에서 시작. 그 이전은 범위 밖." }),
   y(1433, "VERIFIED_WITH_EVENTS", ["SRC_1433_0215", "SRC_1433_0226", "SRC_1433_0307", "SRC_1433_0325", "SRC_1433_0507",
     "SRC_1433_0516A", "SRC_1433_0516B", "SRC_1433_0517", "SRC_1433_0610", "SRC_1433_08L10"]),
   y(1434, "VERIFIED_WITH_EVENTS", ["SRC_1434_0803", "SRC_1434_1024"], { geographySourceIds: ["SRC_GEO_GYEONGWON", "SRC_GEO_HOERYEONG", "SRC_GEO_JONGSEONG"] }),
@@ -40,7 +44,7 @@ export const COVERAGE = [
   y(1447, "VERIFIED_WITH_EVENTS", ["SRC_1447_0107", "SRC_1447_04L10", "SRC_1447_0708"]),
   y(1448, "VERIFIED_WITH_EVENTS", ["SRC_1448_0307"]),
   y(1449, "VERIFIED_WITH_EVENTS", ["SRC_1449_0707"], { geographySourceIds: ["SRC_GEO_BURYEONG"],
-    scope: "~1449-07-07", note: "작업 범위가 1449-07-07에서 끝남. 이 날짜를 북방 문제의 해결 시점으로 보지 않음." })
+    scope: "~1449-07-07", scopeStatus: "PARTIAL", scopeTo: "1449-07-07", note: "작업 범위가 1449-07-07에서 끝남. 이 날짜를 북방 문제의 해결 시점으로 보지 않음." })
 ];
 
 export const COVERAGE_BY_YEAR = new Map(COVERAGE.map((c) => [c.year, c]));

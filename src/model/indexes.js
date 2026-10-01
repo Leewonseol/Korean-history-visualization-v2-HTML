@@ -11,7 +11,8 @@ export const PARTICIPANT_FIELDS = ["actors", "targets", "beneficiaries", "victim
 export const sortDateOf = (ev) => ev.dateMin ?? ev.dateMax ?? ev.recordDate ?? null;
 
 export function buildIndexes(data) {
-  const { PEOPLE, PLACES, SOURCES, EVENTS, PERSON_ATTESTATIONS = [], COVERAGE = [] } = data;
+  const { PEOPLE, PLACES, SOURCES, EVENTS, PERSON_ATTESTATIONS = [], COVERAGE = [], RELATION_TRACES = [] } = data;
+  const traceById = Object.fromEntries(RELATION_TRACES.map((t) => [t.relationId, t]));
   const byId = (arr, key) => Object.fromEntries(arr.map((x) => [x[key], x]));
   const peopleById = byId(PEOPLE, "personId");
   const placesById = byId(PLACES, "placeId");
@@ -80,7 +81,7 @@ export function buildIndexes(data) {
   for (const p of PEOPLE) {
     const n = verifiedEvents[p.personId] ? verifiedEvents[p.personId].size : 0;
     if (p.identityStatus) identityOf[p.personId] = { status: p.identityStatus, basis: "declared" };
-    else identityOf[p.personId] = { status: n > 1 ? "probable_same_person" : "single_attestation", basis: `computed:${n}_verified_events` };
+    else identityOf[p.personId] = { status: n > 1 ? "PROBABLE_SAME" : "SINGLE_ATTESTATION", basis: `computed:${n}_verified_events` };
   }
 
   function attestationAt(personId, date) {
@@ -101,7 +102,7 @@ export function buildIndexes(data) {
   const years = COVERAGE.map((c) => c.year).sort((a, b) => a - b);
 
   return {
-    peopleById, placesById, sourcesById, eventsById, events, contacts, coverageByYear,
+    peopleById, placesById, sourcesById, eventsById, events, contacts, coverageByYear, traceById,
     attestationsByPerson, eventsByPerson, mentionsByPerson, contactsByPerson, sourcesByPerson, verifiedEvents,
     firstSeen, lastSeen, firstSeenAll, lastSeenAll, identityOf,
     attestationAt, levelAt, years, evidenceOfEvent, sortDateOf, evidenceOf: evidenceStatusOf

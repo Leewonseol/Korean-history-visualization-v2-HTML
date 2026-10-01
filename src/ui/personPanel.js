@@ -4,7 +4,7 @@
    ========================================================================== */
 import { LEVELS, AFFILIATIONS, ENTITY_TYPES, IDENTITY_STATUS } from "../data/vocab.js";
 import { esc, personLink, eventLink, sourceLink, relationLine, certBadge, formatDate, evidenceBadge, eventDateLabel } from "./format.js";
-import { evidenceAllowed } from "../model/temporalNetwork.js";
+import { evidenceScope, select } from "../model/evidence.js";
 import { personProfile } from "../analysis/centrality.js";
 import { yearLineChart } from "./charts.js";
 
@@ -19,13 +19,14 @@ export function renderPersonPanel(el, idx, personId, ctx) {
   const f = ctx.filters || {};
   const st = idx.attestationAt(personId, date);
   const lv = idx.levelAt(personId, date);
-  const atts = (idx.attestationsByPerson[personId] || []).filter((a) => evidenceAllowed(idx.evidenceOf(a.provenance), f));
-  const allContacts = (idx.contactsByPerson[personId] || []).filter((c) => evidenceAllowed(c.evidenceStatus, f));
+  const scope = evidenceScope(f);
+  const atts = select(idx.attestationsByPerson[personId], scope);
+  const allContacts = select(idx.contactsByPerson[personId], scope);
   const hiddenContacts = (idx.contactsByPerson[personId] || []).length - allContacts.length;
   const prof = personProfile(idx, personId, allContacts);
   const ident = idx.identityOf[personId];
   const winProf = personProfile(idx, personId, ctx.windowContacts);
-  const evs = (idx.eventsByPerson[personId] || []).map((id) => idx.eventsById[id]).filter((e) => evidenceAllowed(idx.evidenceOfEvent(e), f));
+  const evs = select((idx.eventsByPerson[personId] || []).map((id) => idx.eventsById[id]), scope);
   const srcs = [...(idx.sourcesByPerson[personId] || [])];
   const m = ctx.metrics[personId];
 
@@ -49,8 +50,8 @@ export function renderPersonPanel(el, idx, personId, ctx) {
 
   const traj = ctx.trajectory;
   const charts = traj && traj.years.length
-    ? yearLineChart({ title: "Temporal degree", years: traj.years, values: traj.series[personId].degree, fmt: (v) => String(v) })
-      + yearLineChart({ title: "Temporal betweenness", years: traj.years, values: traj.series[personId].betweenness })
+    ? yearLineChart({ title: "Temporal degree", years: traj.years, values: traj.series[personId].degree, scope: traj.scope, fmt: (v) => String(v) })
+      + yearLineChart({ title: "Temporal betweenness", years: traj.years, values: traj.series[personId].betweenness, scope: traj.scope })
       + `<p class="muted small">연도 slice는 시각이 그 해 안에 확실한 관계만 사용(제외 ${traj.excluded.reduce((a, b) => a + b, 0)}개). 빈 값 = coverage 미수록 연도.</p>`
     : "<p class='muted'>분석 기간에 연도 slice가 없습니다.</p>";
 
@@ -61,7 +62,8 @@ export function renderPersonPanel(el, idx, personId, ctx) {
     </div>
     ${p.aliases.length ? `<div class="kv"><span class="k">이명</span><span class="v">${p.aliases.map(esc).join(", ")}</span></div>` : ""}
     <div class="kv"><span class="k">동일성</span><span class="v"><span class="identity id-${esc(ident.status)}" title="${esc(IDENTITY_STATUS[ident.status])}">${esc(ident.status)}</span>
-      <small class="muted">${ident.basis === "declared" ? "데이터에 선언" : "검증 등장 수로 계산 — 자동 병합 아님"}</small></span></div>
+      <small class="muted">${ident.basis === "declared" ? "데이터에 선언" : "검증 등장 수로 계산 — 자동 병합 아님"}${["PROBABLE_SAME", "UNRESOLVED", "UNRESOLVED_DISTINCT"].includes(ident.status) ? " · <b>동일성 미해결</b>" : ""}</small></span></div>
+    ${(p.identityEvidence || []).length ? `<div class="kv"><span class="k">동일성 근거</span><span class="v small">${p.identityEvidence.map((e) => `“${esc(e.quote)}” <code>${esc(e.locator)}</code>`).join("<br>")}</span></div>` : ""}
     <div class="kv"><span class="k">이름 표기</span><span class="v">${p.nameFormVerified ? "pack v1 인명록 표기" : "<span class='muted'>pack 인명록 표기 없음(한자 미기재)</span>"} · ${evidenceBadge(p.provenance)}</span></div>
     ${(p.possibleSameAs || []).length ? `<div class="kv"><span class="k">동일인 가능성</span><span class="v">${p.possibleSameAs.map((q) => personLink(idx, q)).join(" ")} <small class="muted">미확인 — 병합하지 않음</small></span></div>` : ""}
     ${p.identityNote ? `<div class="note">${esc(p.identityNote)}</div>` : ""}

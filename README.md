@@ -1,71 +1,146 @@
-# 1432~1435 조선-건주여진-주변여진-명 관계 네트워크
+# 세종대 북방 군사·행정 시간 네트워크 (1432–1449)
 
-세종실록(국사편찬위원회 국역) 1차 사료를 근거로, 1432년 12월 여연 침입부터 1435년 9월 여연 침입 사건의
-사후 처리까지 조선·건주여진(이만주 계열)·파저강 기타 세력·건주좌위 계열·홀라온 등 주변 여진·명 사이의
-관계가 시간에 따라 어떻게 변화했는지 보여주는 시간가변(time-varying) 네트워크 시각화입니다.
+**Who gets What, When, How, Where, and with What Outcome?**
 
-별도 서버 없이 GitHub Pages에서 정적으로 동작하며, Cytoscape.js(CDN)로 네트워크를 그립니다.
+1432년 12월 여연 침입부터 1449년 7월 부령도호부 승격·진 설치(작업상의 종점)까지, 세종대 북방 군사·행정정책을
+**temporal + multilevel + multilayer + spatial network**로 복원하는 정적 GitHub Pages 프로젝트입니다.
+중앙 정책결정 → 지휘 → 현장 실행 → 결과 → 보고(장계·치계·회계) → 새 정책결정의 흐름을 **시간 순서를 지키는 경로**로 추적합니다.
+
+> **데이터 근거 현황.** 사건 70건 = 사용자가 실록 원문과 대조한 **VALIDATED HISTORICAL SOURCE PACK v1** 기반 54건
+> (실록 기사 기반 51 + 『세종실록』 지리지 연 단위 3) · 이전 v2 데이터 이관(원문 재대조 전) 15건 · 미검증 시드 1건.
+> 이것은 **검증된 seed set이지 1432~1449 전수 추출이 아닙니다.** 1444년은 pack v1에 검증 기사가 제공되지 않은 '미조사/미수록' 연도입니다(사건이 없었다는 뜻이 아님).
+> 작업 환경에서는 실록·한국민족문화대백과·규장각 사이트가 네트워크 정책으로 차단되어 있어, 이 저장소의 작업 세션이 원문을 직접 열람한 적은 없습니다.
+> 연도별 상태: [`research/chronology_1432_1449.md`](research/chronology_1432_1449.md).
+
+## 실행
+
+빌드 단계가 없습니다. ES module을 쓰므로 `file://`로 열지 말고 정적 서버로 여세요.
+
+```bash
+python3 -m http.server 8000      # 저장소 루트에서
+# http://localhost:8000
+```
+
+GitHub Pages: Settings → Pages → Deploy from a branch → 브랜치 / `(root)`. Cytoscape.js는 cdnjs에서 받습니다.
+
+### 검증·테스트
+
+```bash
+node tools/validate.mjs          # validateData(): 참조 무결성·날짜·Lasswell 필드·사료 수준 검사
+node tools/test.mjs              # 데이터 검증 + time-respecting path(CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED)·근거 선택기·betweenness 단위 테스트
+node tools/golden.mjs            # semantic golden test(원문 → 기대 그래프 표현 회귀)
+node tools/integrity.mjs         # 역사 무결성 테스트(provenance·방향 정책·날짜 정밀도·coverage·사료 상태·동일성·장소·스토리)
+node tools/build-check.mjs       # production build 점검(index.html 참조, import 그래프, named export, 문법)
+node tools/build-research.mjs    # research/*.md 의 표를 데이터에서 재생성(연도별 coverageStatus 출력)
+# 브라우저 E2E (Playwright 필요)
+PLAYWRIGHT_MODULE=$(npm root -g)/playwright/index.js node tools/e2e.mjs http://localhost:8000/
+# (CDN 차단 환경) CYTOSCAPE_FILE=/path/to/cytoscape.min.js 를 함께 지정
+```
 
 ## 파일 구조
 
 ```
-/
-├── index.html   # 페이지 구조(타임라인, 필터, 사건/인물 패널, 스토리 모드)
-├── style.css    # 연구용 인터랙티브 시각화 스타일(라이트/다크 모드, 반응형)
-├── data.js      # 데이터 전체 (people, events, edges, person_states, sources, story scenes)
-└── app.js       # Cytoscape 초기화, 타임라인 엔진, 필터, 인물 상세, 스토리 모드
+index.html  style.css
+src/
+  app.js                    상태 관리·모듈 연결
+  data/
+    vocab.js                LEVEL · LAYER · certainty · theater · 세력 · 메커니즘 · 결과 · 사료 유형 어휘
+    people.js               PEOPLE(authority, identityStatus·possibleSameAs) · PERSON_ATTESTATIONS(기사일 단위 관직·역할 증언)
+    places.js               PLACES (좌표 없음 · coordinateStatus · locationStatus · 근거 있는 상위 장소만)
+    coverage.js             연도별 조사 범위 레지스트리(scopeStatus FULL/PARTIAL/NONE — 1432·1449 PARTIAL, 1444 NONE)
+    relationTraces.js       DIRECT·NORMALIZED 관계마다 pack 원문 줄 → 규칙 → edge 추적
+    expectedWarnings.js     의도적으로 남긴 경고 허용 목록(예상 밖 경고는 CI 실패)
+    sources.js              SOURCES (edge 수준 provenance)
+    events.js               EVENTS (단일 source of truth) · DISCREPANCIES
+    story.js                스토리 모드 장면(문장 단위 eventIds·sourceIds·narrativeStatus·provenance)
+    index.js                DATA 묶음
+  model/
+    dates.js                음력 날짜 문자열(윤달 'MML') 비교·근사 월 계산
+    indexes.js              id 조회, levelAt(person, t), 첫/마지막 등장, 인물별 사건·사료
+    deriveEdges.js          EVENTS.relations → temporal contacts (EDGES 수동 관리 없음)
+    evidence.js             근거 선택기 단일 소스(DIRECT·NORMALIZED 기본, LEGACY·INTERPRETATION opt-in, assertScope)
+    temporalNetwork.js      근거(검증/legacy/해석)·기간(display/CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED)·layer·level·theater·certainty·사료유형 필터
+    validate.js             validateData()
+  analysis/
+    temporalPaths.js        time-respecting path(CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED, EXACT/PARTIAL_ORDER/UNCERTAIN), 피드백 루프
+    missingness.js          시각 불확실로 지표에서 빠지는 관계의 분포
+    identitySensitivity.js  동일성 미해결 노드 수·경로의 동일성 가정·병합 민감도
+    centrality.js           temporal metrics, dynamic communicability, 인물 서사 지표
+    trajectories.js         연도별 centrality trajectory, layer별 중심성
+  ui/
+    networkView.js          Cytoscape (level band 배치, layer 색, certainty 선모양)
+    timeline.js             사건 슬라이더(max = EVENTS.length−1), 연도 jump, 재생
+    filters.js              왼쪽 필터 패널·범례
+    eventPanel.js           [사건] 탭: Who / Gets·Loses What / When / How / Where / Outcome
+    personPanel.js          [인물] 탭
+    analysisPanel.js        [분석] 탭: metrics · trajectory · layer별 · Temporal Path · 피드백 루프
+    charts.js format.js storyMode.js
+research/
+  chronology_1432_1449.md   연도별 조사 기록(18개 연도 전부, 조사 못 한 연도 명시)
+  sources.md                사료 목록(클릭 가능한 링크, 유형·수준·검증 상태·지지 event)
+  people_authority.md       인물 authority table · 동명이인 검토 · 보류 엔티티
+  discrepancies.md          실록 vs 서정록 · 주장 vs 반박 · 날짜·숫자·동일성 쟁점
+  methodology.md            temporal network·경로·모든 지표의 수식과 참고문헌
+  audit_pre_fix.md          감사(수정 전): 근거 계보·심각도 분류·수정 계획
+  audit_post_fix.md         감사(수정 후): 바뀐 것·남은 것·수치
+tools/  validate.mjs  test.mjs  integrity.mjs  e2e.mjs  build-check.mjs  build-research.mjs  research-gen.mjs
 ```
 
-## 데이터 모델 (`data.js`)
+## 데이터 모델
 
-- **PEOPLE** — 인물/집단 노드. `cluster`(소속 세력)와 고정 좌표(`pos`)를 가지며, 실제 역할·평가는
-  아래 `PERSON_STATES`가 시간에 따라 담당합니다(고정 직책을 노드 자체에 박아두지 않음).
-- **EVENTS** — 26~28개 사건. `date`(실록 게재일 기준), `certainty`(사실/당대 주장/미확정/해석),
-  관련 인물, 이 사건으로 생성된 `edgeIds`/`personStateIds`, 사료 링크(`sourceId`)를 가집니다.
-- **EDGES** — 시간가변 관계선. `startDate`/`endDate`로 유효 기간을 표현하며, 같은 두 노드 사이라도
-  관계 성격이 바뀌면 새 edge를 추가합니다(예: 이만주↔조선: `DIPLOMACY(disputed)` →
-  `MILITARY_CONFLICT` → `MEDIATION` → `DIPLOMACY`). `certainty`가 `confirmed`가 아니면
-  화면에서 항상 점선으로 강제 표시됩니다.
-- **PERSON_STATES** — 인물의 시간별 상태. `status`가 배열이므로 "공로"와 "책임추궁"처럼 상반된
-  평가가 동시에 존재할 수 있습니다(김윤수가 대표 사례).
-- **SOURCES** — 조선왕조실록 원문 링크.
-- **STORY_SCENES** — 스토리 모드에서 순서대로 재생되는 12개 장면.
+- **EVENT가 단일 source of truth**입니다. 네트워크 edge는 `EVENTS[*].relations`에서만 파생됩니다.
+  각 relation: `source, target, layer, relationType, dateMin, dateMax, timeKind, direction(+directionEvidence), certainty, causalStatus,
+  provenance(+derivationRule), pathEligible, sourceIds, note`.
+- 각 EVENT의 Lasswell 필드: `actors/targets/decisionMakers/informationSources/beneficiaries/victims`(WHO), `what[]`(GETS/LOSES WHAT),
+  `dateMin/dateMax/datePrecision/recordDate/dateBasis`(WHEN — 범위, 가짜 정밀도 금지), `mechanisms/documentType/embeddedDocumentAuthor`(HOW), `theater/placeIds/locationNote`(WHERE),
+  `outcomes[]`(OUTCOME). 비어 있으면 `validateData()`가 오류를 냅니다.
+- **LEVEL**(행위자 위치, L0 왕 ~ L7 외부 행위자, LU 미상)은 노드의 시간 가변 속성이고, **LAYER**(관계 종류 20개: 요구된 19개 + 부역·노동 동원)는 edge 속성입니다.
+- 근거 계보(`provenance`: pack_v1_direct / pack_v1_derived / inherited_v2 / legacy_anchor_seed / interpretation)는 사건·관계·인물·증언·스토리 문장 단위로 기록합니다.
+  **기본 화면과 지표는 pack v1 검증 데이터만** 씁니다. legacy·해석은 왼쪽 '근거' 토글을 켤 때만 들어갑니다.
+- 실록 기사 안에 인용된 김종서의 장계·치계·회계는 `embeddedDocumentAuthor` + `documentType`으로 분리 저장합니다.
+- 인과는 관계의 `causalStatus`(기본 unknown)와 사건 사이 `eventLinks`(causal / same_record / same_campaign / reference)로만 기록하며, 시간 선후만으로 만들지 않습니다.
+- 연도별 조사 범위는 `coverage.js`에 직접 기록합니다. 1444년은 '현재 검증팩에서 미조사/미수록'이며 사건이 없었다는 뜻이 아닙니다.
 
-## 주요 기능
+## 화면
 
-- 하단 타임라인 슬라이더(1432-12-09 ~ 1435-09-18, 사건 단위 이동) + 처음으로/이전/재생·일시정지/다음/배속(0.5×·1×·2×)
-- 노드 클릭 시 오른쪽 패널에 해당 인물의 시간순 활동·관계선 표시, 세종 클릭 시 13단계 정책결정 변화 전용 패널
-- 세력별/관계유형별 필터, 노드 클릭 시 해당 인물의 관계만 강조(하이라이트)
-- "확인된 사실 / 당대인의 주장 / 확정되지 않음(책임 공방) / 후대 해석" 을 배지와 선 모양(실선/점선)으로 구분
-- 스토리 모드: 12개 장면을 자동 재생하며 관련 없는 노드/관계선은 흐리게 처리
-- 사료 원문 링크(조선왕조실록 새 탭)
+- **왼쪽**: **근거(pack v1 검증만 [ON] · legacy/v2 이관 포함 [OFF] · 편집자 해석 포함 [OFF])** · 기간(연도, 타임라인 커서까지 제한, 누적/최근 12개월/현재 사건만) · level · layer · theater · certainty · 사료 유형 · 노드 크기 지표 · 장소 노드 overlay · 범례
+- **가운데**: level band 배치 네트워크(위→아래: 왕, 중앙 관료, 중앙 군사, 지방 최고지휘, 현장 지휘, 군졸, 주민; 외부 세력은 오른쪽 세력별 열),
+  사건 분포 strip(연·월 단위 사건은 구간, 1444는 '미수록' 음영), 슬라이더, 재생/일시정지, 이전·다음, **coverage 레지스트리에서 생성되는 연도 jump**
+- **오른쪽 탭**: [사건] 근거(Source · Evidence status · Provenance · Date precision · Causal status)·Lasswell 6요소·관계(Layer · Direction · Source · Evidence status · Certainty · Causal status)·사건 연결·사료 링크·discrepancy / [인물] 동일성 상태·표기 근거·관직 증언, 서사 판단용 지표, 연도별 trajectory / [분석] CERTAIN_ORDER 지표(근거 등급별 입력 수·제외 수·동일성 미해결 노드 수), missingness 분포, 병합 민감도, coverage 띠가 붙은 trajectory, layer별 중심성, **Temporal Path(CERTAIN_ORDER/TEMPORALLY_NOT_EXCLUDED, 경로 플래그·동일성 가정)**, 피드백 루프
+- 시각 규칙: 노드 색 = 세력, 모양 = 개인/집단/기관, 세로 위치 = 시점 level, 크기 = 선택 지표(기본 균일), 선 색 = layer,
+  **실선 = 사료 기록 사실 · 점선 = 당대 주장/다툼 · 파선 = 해석/2차/미검증 시드**, 흐린 선 = 과거 관계, 굵은 선 = 현재 사건
 
-## 로컬에서 실행하기
+## Temporal 지표 (정의는 [`research/methodology.md`](research/methodology.md))
 
-정적 파일만으로 구성되어 있어 간단한 로컬 서버로 바로 확인할 수 있습니다.
+| 지표 | 정의 요약 |
+|---|---|
+| Temporal in/out-degree | 창 안 contact 수(방향별) |
+| Temporal activity | 관계로 참여한 서로 다른 사건 수 |
+| Active span | 첫~마지막 활동 근사 개월 |
+| Node persistence | 활동 연도 수 / 창의 연도 수 |
+| Layer diversity | 서로 다른 layer 수, 정규화 Shannon entropy |
+| Centrality trajectory | 연도별 slice에서 degree·betweenness 재계산 |
+| Earliest-arrival temporal closeness | (1/(N−1)) Σ 1/(1+Δ개월), Δ = 가장 이른 도착 − 창 내 첫 contact |
+| Temporal betweenness | prefix-optimal foremost time-respecting 경로 위 Brandes식 의존도 합 |
+| Broadcast / receive | Grindrod et al.(2011) dynamic communicability Q = Π(I−αA_k)⁻¹ 의 행·열 합 |
 
-```bash
-python3 -m http.server 8000
-# 이후 브라우저에서 http://localhost:8000 접속
-```
+time-respecting path: τ₁ ≤ τ₂ ≤ … ≤ τ_k (같은 날 연쇄 허용, 과거 edge로 역행 불가). 날짜가 범위·미상이면 CERTAIN_ORDER는 순서가 확정되는
+단계만 잇고, TEMPORALLY_NOT_EXCLUDED는 '시간 정보상 모순되지 않지만 실제 순서를 입증하지 않는' 경로를 UNCERTAIN으로 표시합니다.
+지표는 CERTAIN_ORDER·DIRECT+NORMALIZED 기본이며, 일 단위 확정 관계만 communicability slice에 넣습니다.
+Cytoscape는 `vendor/cytoscape/3.28.1/`의 고정 파일을 production과 E2E가 함께 씁니다(`tools/build-check.mjs`가 버전·해시 일치 검사).
 
-## GitHub Pages 배포 방법
+## 사료·서술 원칙
 
-1. 이 저장소를 GitHub에 푸시합니다(이미 이 브랜치에 포함되어 있다면 `main`으로 머지/푸시).
-2. GitHub 저장소 페이지에서 **Settings → Pages**로 이동합니다.
-3. **Build and deployment → Source**를 `Deploy from a branch`로 설정합니다.
-4. **Branch**를 배포할 브랜치(예: `main`)와 폴더 `/ (root)`로 선택한 뒤 **Save**를 누릅니다.
-5. 잠시 후 `https://<사용자명>.github.io/<저장소명>/` 주소에서 페이지가 공개됩니다.
+- 사료에서 구체적 행위가 확인될 때만 edge를 만들며, 같은 기사에 이름이 함께 나온다는 이유로 관계를 만들지 않습니다.
+- 이만주 측 주장·제보자 진술은 `contemporary_claim`(점선). 조선 측 전과·사상자 수치에는 '조선 측 보고 수치' 표시.
+- 여진을 하나로 합치지 않고(건주위·파저강 기타·건주좌위·홀라온·오량합·세력 미특정 분리), 맹가첩목아·범찰·동창·임합라를 이만주의 부하로 그리지 않습니다.
+- 4군·6진을 파저강 정벌 하나의 직접 결과로 단순화하지 않으며(자성군 설치와의 연결은 인과로 기록하지 않음), 1449년을 북방 문제 해결 시점으로 묘사하지 않습니다.
+- confirmed 관계가 1차 사료 없이 만들어지면 `validateData()`가 막습니다.
 
-별도의 빌드 과정이나 의존성 설치가 필요 없으며, `index.html`이 저장소 루트에 있으므로
-추가 설정 없이 바로 동작합니다.
+## 다음 단계
 
-## 사료·역사적 사실에 대한 원칙
-
-- 실록이 기록한 사건(`fact`)과 당사자의 주장(`claim`/`counter_claim`)을 같은 수준의 사실로 표시하지 않습니다.
-- 이만주를 "여진의 왕"으로, 또는 모든 주변 여진 세력을 이만주의 부하로 표시하지 않습니다.
-- 임합라·맹가첩목아·범찰은 이만주와의 확정된 상하관계가 실록에 없으므로 독립된 노드로 표시합니다.
-- 1432년 침입의 지휘 주체, 1435년 1월 13일 오량합의 여연성 포위와 같은 해 6월에 드러난
-  "지난 정월 이만주·홀라온 관련 침입"은 서로 다른 사건으로 구분해 다룹니다.
-- 정벌 이후의 외교·포로 반환·통교 재개도 함께 시각화해, 1432~1435년 전체를 단순한
-  "조선 vs 여진 전쟁"으로 단순화하지 않습니다.
+1. 세종실록 월별 기사목록(세종 14년 12월 ~ 31년 7월)을 연도별로 전수 조사(현재는 seed set). 특히 1444년과 각 연도의 '남은 확인 과제'
+2. v2 이관 15건을 원문과 대조해 `pack_v1` 수준으로 올리거나 수정(성죄방목, 1434 이만주 교섭, 1435 정월 침입·문책 등)
+3. 1433 정벌 부대별 전과 수치를 '조선 측 보고 수치'로 입력
+4. 『서정록』 원문 또는 1989 역본 확보 후 실록과 사건 단위 대조(`discrepancies.md` D08)
+5. 김종서 장계·치계·회계의 인용 본문 구간 추출, REPORT layer corpus 확장

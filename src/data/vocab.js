@@ -53,6 +53,90 @@ export const CERTAINTY = {
 };
 export const CERTAINTY_ORDER = ["confirmed", "contemporary_claim", "disputed", "interpretation", "secondary_only", "unverified_seed"];
 
+/* ---------------- 근거 계보(provenance) — 감사 후 추가 ----------------
+   pack_v1_direct   : pack v1에 직접 명시
+   pack_v1_derived  : pack v1 항목을 정해진 정규화 규칙(DERIVATION_RULES)으로만 변환
+   inherited_v2     : 이전 v2 데이터에만 있는 것(legacy, 검증 데이터 아님)
+   legacy_anchor_seed: 최초 anchor 목록에만 있고 pack v1에 없는 것(legacy)
+   interpretation   : 편집자 해석(연구·서사 표현용)
+   unknown_provenance: 출처 추적 불가 */
+export const PROVENANCE = {
+  pack_v1_direct:     { label: "pack v1 직접", group: "verified" },
+  pack_v1_derived:    { label: "pack v1 정규화", group: "verified" },
+  inherited_v2:       { label: "v2 이관(legacy)", group: "legacy" },
+  legacy_anchor_seed: { label: "anchor 시드(legacy)", group: "legacy" },
+  interpretation:     { label: "편집자 해석", group: "interpretation" },
+  unknown_provenance: { label: "출처 불명", group: "unknown" }
+};
+export const EVIDENCE_STATUS = {
+  verified: "pack v1 검증", legacy: "검증 안 됨(legacy)", interpretation: "해석", unknown: "출처 불명"
+};
+export const evidenceStatusOf = (prov) => (PROVENANCE[prov] ? PROVENANCE[prov].group : "unknown");
+
+// pack_v1_derived에 허용되는 정규화 규칙. 이 목록 밖의 변환은 interpretation이다.
+export const DERIVATION_RULES = {
+  R1_court_recipient:  "pack이 '조정/court/central'로 쓴 수신자를 세종 노드로 표기(조정 보고의 최종 수신자 표기 관례)",
+  R2_carrier_split:    "pack의 'A가 B를 통해(via B)' 보고 → A→B, B→조정 두 관계로 분리",
+  R3_who_expansion:    "pack 관계의 집합 표현('대신들', 'Jurchen actors', 'groups')을 같은 항목 WHO 목록의 구성원으로 펼침",
+  R4_group_placeholder:"pack의 무명 집합(군졸·주민·정보원 등)을 group 노드로 표기",
+  R5_content_actor:    "pack WHAT 문장에 행위자로 명시된 인물의 행위를 관계로 표기",
+  R6_layer_normalize:  "pack 관계 라벨(예: MILITARY_ATTACK)을 프로젝트 layer 어휘로 매핑",
+  R7_report_on_record: "조정에 도달한 보고·전달의 시각을 실록 기사일로 표기"
+};
+
+// layer별 방향 정책. 'directed'는 undirected 저장 금지. 'declared'는 근거(directionEvidence)가 있을 때만 undirected 허용.
+// pathRole: transmission = 경로·중심성 계산에 쓰는 접촉, about = '~에 관한' 관계(경로·중심성 제외 가능)
+export const DIRECTION_POLICY = {
+  POLICY: "declared", COMMAND: "directed", REPORT: "directed", INTELLIGENCE: "directed", INVESTIGATION: "directed",
+  LOGISTICS: "directed", MILITARY_ACTION: "directed", MILITARY_CONFLICT: "directed", DIPLOMACY: "directed",
+  CLAIM: "directed", COUNTER_CLAIM: "directed", REWARD: "directed", PUNISHMENT: "directed", ACCOUNTABILITY: "directed",
+  WELFARE: "directed", FORTIFICATION: "directed", RESETTLEMENT: "directed", BORDER_ADMINISTRATION: "directed",
+  LABOR_MOBILIZATION: "directed", COOPERATION: "declared"
+};
+
+// 날짜 정밀도. 범위는 dateMin/dateMax(null = 그 쪽 경계 미상)로 표현한다.
+export const DATE_PRECISION = {
+  DAY: "일 단위", MONTH: "월 단위(월 안의 날짜 미상)", YEAR: "연 단위(연중 시점 미상)", UNKNOWN: "미상(경계만 일부 알려짐)"
+};
+export const TIME_KIND = {
+  instant: "한 시점(범위면 그 안의 미상 시점)", duration: "기간 전체에 걸친 지속"
+};
+
+export const COVERAGE_STATUS = {
+  VERIFIED_WITH_EVENTS:      "pack v1 검증 기사·사건 있음(전수 아님)",
+  VERIFIED_NO_RELEVANT_EVENT:"사료 확인 결과 관련 사건 없음(pack에 명시된 경우만)",
+  NOT_COVERED:               "pack v1에 검증 기사 미수록(미조사) — '사건 없음'이 아님",
+  PARTIAL:                   "일부 기간·기사만 검증",
+  UNKNOWN:                   "판단 불가"
+};
+
+export const IDENTITY_STATUS = {
+  confirmed_same_person: "pack 서술이 여러 등장을 같은 인물로 연결",
+  probable_same_person:  "같은 이름의 등장을 한 노드로 묶었으나 pack이 동일성을 명시하지 않음",
+  unresolved_homonym:    "동명이인 가능성 — 별도 노드, 자동 병합 금지",
+  distinct_person:       "다른 인물로 확인",
+  single_attestation:    "pack에 한 번만 등장",
+  collective_or_office:  "집단·기관·직위 자리표시자"
+};
+
+export const COORDINATE_STATUS = {
+  sourced: "근거 있는 좌표", pack_no_coordinate: "pack v1에 좌표 없음(위치 불명이라는 뜻 아님)",
+  estimated_not_allowed: "추정 좌표 금지 대상", historically_uncertain: "사료상 위치가 불확실하다고 명시"
+};
+export const LOCATION_STATUS = {
+  named_in_pack: "pack에 지명으로 등장", abstract: "추상적 위치(조정 등)", legacy_only: "v2에서만 등장"
+};
+export const NARRATIVE_STATUS = {
+  direct_evidence: "pack 서술을 그대로 옮김", normalized_summary: "pack 서술의 요약·정규화", interpretation: "편집자 해석"
+};
+export const SOURCE_USAGE = {
+  VERIFIED_USED: "pack v1 검증 · 사건 근거로 사용",
+  VERIFIED_UNUSED: "pack v1 검증 · 사건 근거로 미사용",
+  REGISTERED_UNCHECKED: "등록됐으나 내용 미확인",
+  LEGACY: "v2 이관 사료(재대조 전)",
+  BIBLIOGRAPHIC_ONLY: "서지 정보만(본문 미확보·2차 서술)"
+};
+
 // 인과관계 상태: 시간 선후만으로 causal을 만들지 않는다.
 export const CAUSAL_STATUS = {
   explicit:         "사료가 직접 연결(이에 따라·명하여 등)",
@@ -66,7 +150,7 @@ export const THEATERS = {
   AMNOK:       { label: "압록강 방면(평안도·파저강)" },
   DUMAN:       { label: "두만강 방면(함길도)" },
   MING:        { label: "명" },
-  UNSPECIFIED: { label: "위치 불명" }
+  UNSPECIFIED: { label: "전구 미특정(pack 서술 없음)" }
 };
 export const THEATER_ORDER = ["CENTRAL", "AMNOK", "DUMAN", "MING", "UNSPECIFIED"];
 
@@ -75,10 +159,10 @@ export const AFFILIATIONS = {
   JOSEON_CENTRAL:  { label: "조선 왕실·중앙",              color: "#2c5282" },
   JOSEON_FRONTIER: { label: "조선 북방 군·지방",           color: "#2f6f4f" },
   JOSEON_PEOPLE:   { label: "조선 군졸·주민(집단)",        color: "#718096" },
-  JIANZHOU_WEI:    { label: "건주위(이만주 계열)",         color: "#a33a3a" },
-  PAJEOGANG_OTHER: { label: "파저강 기타 세력",            color: "#b7652a" },
-  JIANZHOU_LEFT:   { label: "건주좌위 계열",               color: "#7f4aa8" },
-  HOLLAON:         { label: "홀라온(올적합)",              color: "#5e6b1f" },
+  JIANZHOU_WEI:    { label: "이만주 및 관하",               color: "#a33a3a" },
+  PAJEOGANG_OTHER: { label: "임합라 등(1433 정벌 대상 기타)", color: "#b7652a" },
+  JIANZHOU_LEFT:   { label: "맹가첩목아·범찰·동창(편집 분류)", color: "#7f4aa8" },
+  HOLLAON:         { label: "홀라온 우디거",               color: "#5e6b1f" },
   ORYANGHAP:       { label: "오량합",                      color: "#8a7a14" },
   ODORI:           { label: "오도리",                      color: "#9b5fc0" },
   UDIGE:           { label: "우디거(세부 집단 미특정)",    color: "#4d7c0f" },

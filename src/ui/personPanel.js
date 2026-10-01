@@ -2,8 +2,9 @@
    [인물] 탭 — 시점별 관직·level, 활동기간, 사건·관계·장소, 사료 provenance,
    서사 적합성 판단용 지표(순위·주인공 자동 선정 없음), 연도별 trajectory
    ========================================================================== */
-import { LEVELS, AFFILIATIONS, ENTITY_TYPES, CERTAINTY } from "../data/vocab.js";
-import { esc, personLink, eventLink, sourceLink, relationLine, certBadge, formatDate } from "./format.js";
+import { LEVELS, AFFILIATIONS, ENTITY_TYPES, IDENTITY_STATUS } from "../data/vocab.js";
+import { esc, personLink, eventLink, sourceLink, relationLine, certBadge, formatDate, evidenceBadge, eventDateLabel } from "./format.js";
+import { evidenceAllowed } from "../model/temporalNetwork.js";
 import { personProfile } from "../analysis/centrality.js";
 import { yearLineChart } from "./charts.js";
 
@@ -15,19 +16,22 @@ export function renderPersonPanel(el, idx, personId, ctx) {
   }
   const p = idx.peopleById[personId];
   const date = ctx.cursorDate;
-  const st = idx.stateAt(personId, date);
+  const f = ctx.filters || {};
+  const st = idx.attestationAt(personId, date);
   const lv = idx.levelAt(personId, date);
-  const states = idx.statesByPerson[personId] || [];
-  const allContacts = idx.contactsByPerson[personId] || [];
-  const prof = personProfile(idx, personId, idx.contacts);
+  const atts = (idx.attestationsByPerson[personId] || []).filter((a) => evidenceAllowed(idx.evidenceOf(a.provenance), f));
+  const allContacts = (idx.contactsByPerson[personId] || []).filter((c) => evidenceAllowed(c.evidenceStatus, f));
+  const hiddenContacts = (idx.contactsByPerson[personId] || []).length - allContacts.length;
+  const prof = personProfile(idx, personId, allContacts);
+  const ident = idx.identityOf[personId];
   const winProf = personProfile(idx, personId, ctx.windowContacts);
-  const evs = (idx.eventsByPerson[personId] || []).map((id) => idx.eventsById[id]);
+  const evs = (idx.eventsByPerson[personId] || []).map((id) => idx.eventsById[id]).filter((e) => evidenceAllowed(idx.evidenceOfEvent(e), f));
   const srcs = [...(idx.sourcesByPerson[personId] || [])];
   const m = ctx.metrics[personId];
 
   const rows = [
-    ["최초 등장", formatDate(prof.firstSeen), ""],
-    ["최종 등장", formatDate(prof.lastSeen), ""],
+    ["최초 등장(검증)", prof.firstSeen ? formatDate(prof.firstSeen) : "<span class='muted'>검증 등장 없음</span>", ""],
+    ["최종 등장(검증)", prof.lastSeen ? formatDate(prof.lastSeen) : "—", ""],
     ["활동기간(근사)", `${prof.spanMonths.toFixed(1)}개월`, ""],
     ["사건 참여 수", prof.eventCount, winProf.eventCount],
     ["관계 수", prof.relationCount, winProf.relationCount],
@@ -47,21 +51,27 @@ export function renderPersonPanel(el, idx, personId, ctx) {
   const charts = traj && traj.years.length
     ? yearLineChart({ title: "Temporal degree", years: traj.years, values: traj.series[personId].degree, fmt: (v) => String(v) })
       + yearLineChart({ title: "Temporal betweenness", years: traj.years, values: traj.series[personId].betweenness })
+      + `<p class="muted small">연도 slice는 시각이 그 해 안에 확실한 관계만 사용(제외 ${traj.excluded.reduce((a, b) => a + b, 0)}개). 빈 값 = coverage 미수록 연도.</p>`
     : "<p class='muted'>분석 기간에 연도 slice가 없습니다.</p>";
 
   el.innerHTML = `
     <div class="ev-head">
-      <div class="ev-title">${esc(p.canonicalName)} ${p.hanja ? `<span class="hanja">${esc(p.hanja)}</span>${p.hanjaVerified ? "" : "<small class='muted' title='원문 대조 전'>*</small>"}` : ""}</div>
+      <div class="ev-title">${esc(p.canonicalName)} ${p.hanja ? `<span class="hanja" title="표기 근거: ${esc(p.nameFormSource)}">${esc(p.hanja)}</span>` : ""}</div>
       <div class="muted">${esc(ENTITY_TYPES[p.entityType].label)} · <span class="dot" style="background:${AFFILIATIONS[p.affiliation].color}"></span>${esc(AFFILIATIONS[p.affiliation].label)}</div>
     </div>
     ${p.aliases.length ? `<div class="kv"><span class="k">이명</span><span class="v">${p.aliases.map(esc).join(", ")}</span></div>` : ""}
-    ${p.identityNote ? `<div class="note">${esc(p.identityNote)} <small>(동일성 확실성: ${esc(p.identityCertainty)})</small></div>` : ""}
+    <div class="kv"><span class="k">동일성</span><span class="v"><span class="identity id-${esc(ident.status)}" title="${esc(IDENTITY_STATUS[ident.status])}">${esc(ident.status)}</span>
+      <small class="muted">${ident.basis === "declared" ? "데이터에 선언" : "검증 등장 수로 계산 — 자동 병합 아님"}</small></span></div>
+    <div class="kv"><span class="k">이름 표기</span><span class="v">${p.nameFormVerified ? "pack v1 인명록 표기" : "<span class='muted'>pack 인명록 표기 없음(한자 미기재)</span>"} · ${evidenceBadge(p.provenance)}</span></div>
+    ${(p.possibleSameAs || []).length ? `<div class="kv"><span class="k">동일인 가능성</span><span class="v">${p.possibleSameAs.map((q) => personLink(idx, q)).join(" ")} <small class="muted">미확인 — 병합하지 않음</small></span></div>` : ""}
+    ${p.identityNote ? `<div class="note">${esc(p.identityNote)}</div>` : ""}
 
     <h4>${formatDate(date)} 시점</h4>
     <div class="kv"><span class="k">level</span><span class="v">${esc(LEVELS[lv].label)}</span></div>
-    <div class="kv"><span class="k">관직·역할</span><span class="v">${st ? `${esc(st.office)} ${certBadge(st.certainty)}` : "<span class='muted'>이 시점의 상태 기록 없음(기본 level 사용)</span>"}</span></div>
+    <div class="kv"><span class="k">가장 최근 증언</span><span class="v">${st ? `${esc(st.attestedDate)} ${esc(st.office)}` : "<span class='muted'>이 시점 이전의 pack 증언 없음(기본 level 사용)</span>"}</span></div>
+    <p class="muted small">level은 편집자 분류이며, 증언 사이 기간에 관직이 유지됐다고 가정하지 않습니다.</p>
 
-    ${states.length ? `<h4>관직·level 변화</h4><ul class="plain">${states.map((s) => `<li><span class="rel-date">${esc(s.startDate)}~${esc(s.endDate || "")}</span> ${esc(s.level)} ${esc(s.office)} ${certBadge(s.certainty)}${s.note ? `<div class="rel-note">${esc(s.note)}</div>` : ""}</li>`).join("")}</ul>` : ""}
+    ${atts.length ? `<h4>관직·역할 증언 <small class="muted">기사일 기준, 구간 아님</small></h4><ul class="plain">${atts.map((a) => `<li><span class="rel-date">${esc(a.attestedDate)}</span> ${esc(a.level)} ${esc(a.office)} ${evidenceBadge(a.provenance)} <small class="muted">${a.sourceIds.map(esc).join(", ")}</small>${a.note ? `<div class="rel-note">${esc(a.note)}</div>` : ""}</li>`).join("")}</ul>` : ""}
 
     <h4>서사 판단용 지표 <small class="muted">순위 아님</small></h4>
     <table class="kv-table"><tr><th></th><th>전체 데이터</th><th>현재 분석 창</th></tr>
@@ -79,9 +89,10 @@ export function renderPersonPanel(el, idx, personId, ctx) {
     </div>
 
     <h4>사건 (${evs.length})</h4>
-    <ul class="plain">${evs.map((e) => `<li>${eventLink(idx, e.id)} ${certBadge(e.certainty)}</li>`).join("")}</ul>
+    <ul class="plain">${evs.map((e) => `<li>${eventLink(idx, e.id)} ${certBadge(e.certainty)} ${evidenceBadge(e.provenance)}</li>`).join("")}</ul>
 
     <h4>관계 (${allContacts.length})</h4>
+    ${hiddenContacts ? `<p class="muted small">legacy·해석 관계 ${hiddenContacts}개 숨김 — 왼쪽 '근거' 토글로 표시</p>` : ""}
     <ul class="plain rels">${allContacts.map((c) => relationLine(idx, c, { showEvent: true })).join("")}</ul>
 
     <h4>장소</h4>

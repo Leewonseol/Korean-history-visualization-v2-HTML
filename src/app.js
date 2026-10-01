@@ -1,12 +1,13 @@
 /* ==========================================================================
    진입점: 상태 관리와 모듈 연결
-   데이터 흐름: DATA → buildIndexes → (filters) → filterContacts → networkView / analysis / panels
+   데이터 흐름: DATA → buildIndexes → (filters) → filterContacts(display) / analysisContacts(strict) → networkView / analysis / panels
+   근거 기본값: pack v1 검증 데이터만. legacy·해석은 왼쪽 '근거' 토글로만 포함.
    ========================================================================== */
 import { DATA } from "./data/index.js";
 import { buildIndexes, PARTICIPANT_FIELDS } from "./model/indexes.js";
 import { validateData } from "./model/validate.js";
-import { filterContacts, eventPasses } from "./model/temporalNetwork.js";
-import { yearStart, yearEnd, minDate, maxDate, shiftMonths, yearOf } from "./model/dates.js";
+import { filterContacts, analysisContacts, eventPasses, evidenceAllowed } from "./model/temporalNetwork.js";
+import { yearStart, yearEnd, minDate, maxDate, shiftMonths, formatDate } from "./model/dates.js";
 import { computeMetrics } from "./analysis/centrality.js";
 import { temporalPath, isTimeRespecting, feedbackLoops } from "./analysis/temporalPaths.js";
 import { yearlyTrajectories, layerDegreeMatrix } from "./analysis/trajectories.js";
@@ -17,11 +18,13 @@ import { renderEventPanel } from "./ui/eventPanel.js";
 import { renderPersonPanel } from "./ui/personPanel.js";
 import { renderAnalysisPanel } from "./ui/analysisPanel.js";
 import { createStoryMode } from "./ui/storyMode.js";
-import { esc, layerChip, certBadge, eventLink } from "./ui/format.js";
+import { esc, layerChip, relationLine } from "./ui/format.js";
+import { NOT_COVERED_LABEL } from "./ui/timeline.js";
 
 const $ = (id) => document.getElementById(id);
 const idx = buildIndexes(DATA);
 const validation = validateData(DATA);
+idx.sourceUsage = validation.sourceUsage;
 
 const state = {
   cursor: 0,
@@ -29,15 +32,17 @@ const state = {
   tab: "event",
   selected: null,
   spotlight: null,
-  pathUI: { from: "JO_SEJONG", to: "JO_CHOEYUNDEOK", result: undefined, loops: null, loopAnchor: "JO_SEJONG" }
+  pathUI: { from: "JO_SEJONG", to: "JO_CHOEYUNDEOK", mode: "strict", result: undefined, loops: null, loopAnchor: "JO_SEJONG" }
 };
 
 /* ---------------- 창(window) 계산 ---------------- */
-const cursorDate = () => idx.events[state.cursor].eventDate;
+// 커서 날짜 = 현재 사건이 '기록된' 시점(기사일). 기사일이 없으면(지리지) 정렬 날짜.
+const cursorDate = () => { const e = idx.events[state.cursor]; return e.recordDate ?? idx.sortDateOf(e); };
 function period() { return { from: yearStart(state.f.yearFrom), to: yearEnd(state.f.yearTo) }; }
 function baseFilters() {
   const f = state.f;
-  return { layers: f.layers, levels: f.levels, theaters: f.theaters, certainties: f.certainties, sourceTypes: f.sourceTypes, verifications: f.verifications };
+  return { layers: f.layers, levels: f.levels, theaters: f.theaters, certainties: f.certainties, sourceTypes: f.sourceTypes,
+    includeLegacy: f.includeLegacy, includeInterpretation: f.includeInterpretation };
 }
 function analysisWindow() {
   const p = period();
@@ -59,9 +64,10 @@ const net = createNetworkView($("cy"), idx, {
 });
 $("btnFit").addEventListener("click", () => net.fit());
 const timeline = createTimeline(idx, state, (i) => setCursor(i));
-createFilters(idx, state, () => update());
-const story = createStoryMode(idx, {
+createFilters(idx, state, () => { update(); story.refresh(); });
+const story = createStoryMode(idx, DATA.STORY_SCENES, {
   setCursor: (i) => setCursor(i),
+  filters: () => baseFilters(),
   spotlight: (ids) => { state.spotlight = ids ? new Set(ids) : null; applySpotlight(); }
 });
 
@@ -87,21 +93,23 @@ let last = {};
 function update() {
   const fb = baseFilters();
   const disp = displaySpec();
-  const displayContacts = filterContacts(idx, { ...fb, ...disp });
+  const displayContacts = filterContacts(idx, { ...fb, ...disp, mode: "display" });
   const win = analysisWindow();
-  const analysisContacts = filterContacts(idx, { ...fb, ...win });
-  const metricsResult = computeMetrics(analysisContacts, win);
+  const analysis = analysisContacts(idx, { ...fb, ...win }, "strict");
+  const metricsResult = computeMetrics(analysis.contacts, win, { mode: "strict" });
   const ev = idx.events[state.cursor];
-  const evOk = eventPasses(idx, ev, fb) && (!disp.eventIds || disp.eventIds.has(ev.id)) && ev.eventDate >= disp.from && ev.eventDate <= disp.to;
+  const evDate = idx.sortDateOf(ev);
+  const evOk = eventPasses(idx, ev, fb) && (!disp.eventIds || disp.eventIds.has(ev.id)) && evDate >= disp.from && evDate <= disp.to;
   const parts = new Set();
-  if (evOk) PARTICIPANT_FIELDS.forEach((k) => (ev[k] || []).forEach((p) => { if (fb.levels.has(idx.levelAt(p, ev.eventDate))) parts.add(p); }));
+  if (evOk) PARTICIPANT_FIELDS.forEach((k) => (ev[k] || []).forEach((p) => { if (fb.levels.has(idx.levelAt(p, cursorDate()))) parts.add(p); }));
   if (state.selected) parts.add(state.selected);
 
   let placeLinks = null;
   if (state.f.showPlaces) {
     placeLinks = [];
     for (const e of idx.events) {
-      const inWin = disp.eventIds ? disp.eventIds.has(e.id) : e.eventDate >= disp.from && e.eventDate <= disp.to;
+      const d = idx.sortDateOf(e);
+      const inWin = disp.eventIds ? disp.eventIds.has(e.id) : d >= disp.from && d <= disp.to;
       if (!inWin || !eventPasses(idx, e, fb)) continue;
       for (const a of e.actors) for (const pl of e.placeIds) placeLinks.push({ actor: a, placeId: pl });
     }
@@ -110,16 +118,25 @@ function update() {
     : Object.fromEntries(metricsResult.nodes.map((n) => [n, metricsResult.metrics[n][state.f.metric] || 0]));
 
   net.update({ contacts: displayContacts, date: cursorDate(), metricValues, currentEventId: ev.id, selected: state.selected, extraNodes: [...parts], placeLinks });
-  last = { displayContacts, analysisContacts, metricsResult, win, disp };
+  // 경로 선택 목록: possible 판정으로 기간 안에 있을 수 있는 경로 대상 관계의 노드(strict에서 고립된 노드도 고를 수 있게)
+  const pathNodes = [...new Set(analysisContacts(idx, { ...fb, ...win }, "possible").contacts.flatMap((c) => [c.source, c.target]))]
+    .sort((a, b) => idx.peopleById[a].canonicalName.localeCompare(idx.peopleById[b].canonicalName, "ko"));
+  last = { displayContacts, analysisContacts: analysis.contacts, analysis, metricsResult, win, disp, pathNodes };
   timeline.render((e) => eventPasses(idx, e, fb));
   $("netStatus").innerHTML = "";
   const st = document.createElement("div");
   st.className = "net-summary";
-  st.textContent = `표시: ${disp.eventIds ? "현재 사건" : `${disp.from.replace(/-00-00$/, "")} ~ ${disp.to.replace(/-99-99$/, "")}`} · edge(contact) ${displayContacts.length} · 노드 ${net.cy.nodes(".actor").length}`;
+  const dataset = datasetLabel();
+  st.textContent = `표시: ${disp.eventIds ? "현재 사건" : `${disp.from.replace(/-00-00$/, "")} ~ ${disp.to.replace(/-99-99$/, "")}`} · 근거 ${dataset} · edge(contact) ${displayContacts.length} · 노드 ${net.cy.nodes(".actor").length}`;
   $("netStatus").appendChild(st);
   if (state.pathUI.result) net.highlightPath(state.pathUI.result.steps);
   applySpotlight();
   renderPanels();
+}
+
+function datasetLabel() {
+  const f = state.f;
+  return ["pack v1", f.includeLegacy ? "+ legacy" : "", f.includeInterpretation ? "+ 해석" : ""].filter(Boolean).join(" ");
 }
 
 function applySpotlight() {
@@ -132,11 +149,11 @@ function applySpotlight() {
 
 function renderPanels() {
   const ev = idx.events[state.cursor];
-  if (state.tab === "event") renderEventPanel($("tab-event"), idx, ev, DATA);
+  if (state.tab === "event") renderEventPanel($("tab-event"), idx, ev, DATA, baseFilters());
   if (state.tab === "person") {
     const traj = state.selected ? yearlyTrajectories(idx, { ...baseFilters(), ...last.win }, [state.selected]) : null;
     renderPersonPanel($("tab-person"), idx, state.selected, {
-      cursorDate: cursorDate(), windowContacts: last.analysisContacts, metrics: last.metricsResult.metrics, trajectory: traj
+      cursorDate: cursorDate(), windowContacts: last.analysisContacts, metrics: last.metricsResult.metrics, trajectory: traj, filters: baseFilters()
     });
   }
   if (state.tab === "analysis") {
@@ -148,24 +165,27 @@ function renderPanels() {
       win: last.win, metricsResult: last.metricsResult, metricKey: state.f.metric, trajectory,
       trajectoryNote: state.selected && metrics[state.selected] ? "선택 인물의 연도별 slice 값" : "인물을 선택하지 않아 창 전체 degree 상위 3개를 표시(순위는 주인공 판정이 아님)",
       layerMatrix: layerDegreeMatrix(last.analysisContacts), pathUI: state.pathUI, cursorDate: cursorDate(),
-      contactCount: last.analysisContacts.length
+      contactCount: last.analysisContacts.length, excludedUncertain: last.analysis.excludedUncertain, excludedAbout: last.analysis.excludedAbout,
+      datasetLabel: datasetLabel(), pathNodes: last.pathNodes, eventAllowed: (e) => evidenceAllowed(idx.evidenceOfEvent(e), baseFilters())
     });
   }
 }
 
 /* ---------------- temporal path / 루프 ---------------- */
 function runPath() {
-  const from = $("pathFrom").value, to = $("pathTo").value;
-  state.pathUI.from = from; state.pathUI.to = to;
+  const from = $("pathFrom").value, to = $("pathTo").value, mode = $("pathMode").value;
+  state.pathUI.from = from; state.pathUI.to = to; state.pathUI.mode = mode;
   const win = last.win;
+  const contacts = mode === "strict" ? last.analysisContacts : analysisContacts(idx, { ...baseFilters(), ...win }, "possible").contacts;
   let sources = [from], t0 = win.from;
   if (from.startsWith("event:")) {
+    // 사건에서 출발: 그 사건의 행위자 전원, 사건 하한 시각부터(하한 미상이면 기간 시작부터 — 더 이른 출발을 가정하지 않음)
     const ev = idx.eventsById[from.slice(6)];
     sources = [...new Set(ev.actors)];
-    t0 = maxDate(win.from, ev.eventDate);
+    t0 = ev.dateMin ? maxDate(win.from, ev.dateMin) : win.from;
   }
-  const res = temporalPath(last.analysisContacts, sources, to, t0, win.to);
-  state.pathUI.result = res ? { ...res, ok: isTimeRespecting(res.steps, t0) } : null;
+  const res = temporalPath(contacts, sources, to, t0, win.to, mode);
+  state.pathUI.result = res ? { ...res, ok: isTimeRespecting(res.steps, t0, mode) } : null;
   state.pathUI.loops = null;
   update();
   switchTab("analysis"); renderPanels();
@@ -173,7 +193,10 @@ function runPath() {
 function runLoops() {
   const a = $("loopAnchor").value;
   state.pathUI.loopAnchor = a;
-  state.pathUI.loops = feedbackLoops(last.analysisContacts, a, last.win.from, last.win.to);
+  const mode = $("pathMode") ? $("pathMode").value : state.pathUI.mode;
+  state.pathUI.mode = mode;
+  const contacts = mode === "strict" ? last.analysisContacts : analysisContacts(idx, { ...baseFilters(), ...last.win }, "possible").contacts;
+  state.pathUI.loops = feedbackLoops(contacts, a, last.win.from, last.win.to, mode);
   renderPanels();
 }
 
@@ -182,7 +205,7 @@ function showEdgePopover(ids) {
   const cs = ids.map((id) => idx.contacts.find((c) => c.id === id));
   $("netStatus").innerHTML = `<div class="edge-pop"><button type="button" class="close" data-close>×</button>
     <b>${esc(idx.peopleById[cs[0].source].canonicalName)} → ${esc(idx.peopleById[cs[0].target].canonicalName)}</b> ${layerChip(cs[0].layer)}
-    <ul class="plain">${cs.map((c) => `<li>${esc(c.startDate)} <code>${esc(c.relationType)}</code> ${certBadge(c.certainty)} ${eventLink(idx, c.eventId)}</li>`).join("")}</ul></div>`;
+    <ul class="plain rels">${cs.map((c) => relationLine(idx, c, { showEvent: true })).join("")}</ul></div>`;
 }
 
 /* ---------------- 위임 클릭 ---------------- */
@@ -203,24 +226,27 @@ document.addEventListener("click", (e) => {
 
 /* ---------------- 검증 배지 · 커버리지 안내 ---------------- */
 (function header() {
-  const ev = idx.events;
-  $("dataRange").textContent = `${ev[0].eventDate.slice(0, 4)}–${ev[ev.length - 1].eventDate.slice(0, 4)}`;
+  const cov = DATA.COVERAGE;
+  const first = cov[0], lastY = cov[cov.length - 1];
+  $("dataRange").textContent = `${first.year}–${lastY.year}`;
   const b = $("validationBadge");
   const nE = validation.errors.length, nW = validation.warnings.length;
-  b.textContent = nE ? `데이터 검증 오류 ${nE}` : `데이터 검증 통과${nW ? ` · 경고 ${nW}` : ""}`;
+  b.textContent = nE ? `데이터 검증 오류 ${nE}` : `데이터 검증 통과${nW ? ` · 확인 필요 ${nW}` : ""}`;
   b.classList.toggle("bad", nE > 0);
   $("validationDetail").innerHTML = `<b>validateData()</b> ${esc(JSON.stringify(validation.stats))}
-    <ul>${validation.errors.map((x) => `<li class="err">${esc(x)}</li>`).join("")}${validation.warnings.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    <ul>${validation.errors.map((x) => `<li class="err">${esc(x)}</li>`).join("")}${validation.warnings.map((x) => `<li class="warn">${esc(x)}</li>`).join("")}${validation.notices.map((x) => `<li class="muted">${esc(x)}</li>`).join("")}</ul>`;
   b.addEventListener("click", () => $("validationDetail").classList.toggle("hidden"));
   if (nE) $("validationDetail").classList.remove("hidden");
 
-  const byVer = {};
-  ev.forEach((e) => (byVer[e.verification] = (byVer[e.verification] || 0) + 1));
-  const empty = [];
-  for (let y = yearOf(ev[0].eventDate); y <= yearOf(ev[ev.length - 1].eventDate); y++) if (!idx.years.includes(y)) empty.push(y);
-  $("coverageNote").innerHTML = `사건 ${ev.length}개 — 검증 source pack v1 ${byVer.pack_v1 || 0} · v2 이관(원문 재대조 전) ${byVer.inherited_v2 || 0} · <span class="badge badge-unverified_seed">미검증</span> 시드 ${byVer.seed_unverified || 0}.
-    사건이 없는 연도: ${empty.join(", ") || "없음"}. 이 데이터는 1432~1449 전수 추출이 아니라 검증된 seed set입니다(research/chronology_1432_1449.md).`;
+  const byGroup = {};
+  idx.events.forEach((e) => { const g = idx.evidenceOfEvent(e); byGroup[g] = (byGroup[g] || 0) + 1; });
+  const nc = cov.filter((c) => c.coverageStatus === "NOT_COVERED").map((c) => c.year);
+  const st = validation.stats;
+  $("coverageNote").innerHTML = `사건 ${idx.events.length}개 — pack v1 검증 ${byGroup.verified || 0} · legacy(v2 이관·anchor 시드) ${byGroup.legacy || 0}.
+    관계 ${st.relations}개 — pack v1 ${st.relationsVerified} · legacy ${st.relationsLegacy} · 해석 ${st.relationsInterpretation}.
+    <b>${NOT_COVERED_LABEL}:</b> ${nc.join(", ") || "없음"} <span class="muted">(그 해에 사건이 없었다는 뜻이 아님)</span>.
+    검증 연도도 전수 조사가 아닌 seed set입니다. 작업 범위 ${formatDate("1432-12-09")} ~ ${formatDate("1449-07-07")}(research/chronology_1432_1449.md).`;
 })();
 
 update();
-window.__app = { state, idx, update, setCursor, last: () => last, net, validation };
+window.__app = { state, idx, update, setCursor, selectPerson, last: () => last, net, validation };

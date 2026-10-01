@@ -1,10 +1,14 @@
 /* ==========================================================================
    하단 사건 타임라인
    - 슬라이더 max = EVENTS.length - 1 (하드코딩 없음)
-   - 연도 jump 버튼과 사건 분포 strip은 EVENTS에서 자동 생성
+   - 연도 축·jump 버튼은 COVERAGE 레지스트리에서, 사건 분포 strip은 EVENTS에서 자동 생성
+   - NOT_COVERED 연도는 '현재 검증팩에서 미조사/미수록'으로 표시한다('사건 없음'이 아님)
+   - 연·월 단위 사건은 점이 아니라 구간으로, '기사일 이전' 사건은 기사일에 '이전' 표시로 그린다
    ========================================================================== */
-import { monthIndex, yearOf, formatDate } from "../model/dates.js";
-import { CERTAINTY } from "../data/vocab.js";
+import { monthIndex, yearOf, formatDate, formatRange } from "../model/dates.js";
+import { CERTAINTY, COVERAGE_STATUS } from "../data/vocab.js";
+
+export const NOT_COVERED_LABEL = "현재 검증팩에서 미조사/미수록";
 
 export function createTimeline(idx, state, setCursor) {
   const $ = (id) => document.getElementById(id);
@@ -14,12 +18,18 @@ export function createTimeline(idx, state, setCursor) {
   slider.max = ev.length - 1;
   slider.addEventListener("input", () => { stop(); setCursor(+slider.value); });
 
-  // 연도 이동: 사건이 있는 연도만 활성
+  // 연도 이동: coverage 상태를 그대로 보여 준다
   const y0 = idx.years[0], y1 = idx.years[idx.years.length - 1];
   const yearBtns = [];
-  for (let y = y0; y <= y1; y++) {
-    const first = ev.findIndex((e) => yearOf(e.eventDate) === y);
-    yearBtns.push(`<button type="button" data-year="${y}" ${first < 0 ? "disabled title='이 연도에는 아직 데이터에 사건이 없습니다'" : ""} data-idx="${first}">${y}</button>`);
+  for (const y of idx.years) {
+    const cov = idx.coverageByYear[y];
+    const first = ev.findIndex((e) => yearOf(idx.sortDateOf(e)) === y);
+    if (cov.coverageStatus === "NOT_COVERED" || first < 0) {
+      yearBtns.push(`<button type="button" class="not-covered cov-${cov.coverageStatus}" data-year="${y}" disabled
+        title="${y}: ${cov.coverageStatus === "NOT_COVERED" ? NOT_COVERED_LABEL : COVERAGE_STATUS[cov.coverageStatus]} — ${cov.note.replace(/"/g, "'")}">${y}<small>${cov.coverageStatus === "NOT_COVERED" ? " 미수록" : ""}</small></button>`);
+    } else {
+      yearBtns.push(`<button type="button" class="cov-${cov.coverageStatus}" data-year="${y}" data-idx="${first}" title="${y}: ${COVERAGE_STATUS[cov.coverageStatus]}">${y}</button>`);
+    }
   }
   $("yearJumps").innerHTML = yearBtns.join("");
   $("yearJumps").addEventListener("click", (e) => {
@@ -31,9 +41,22 @@ export function createTimeline(idx, state, setCursor) {
   const m0 = monthIndex(`${y0}-01-01`), m1 = monthIndex(`${y1}-12-30`);
   const pct = (d) => ((monthIndex(d) - m0) / (m1 - m0)) * 100;
   let strip = "";
-  for (let y = y0; y <= y1; y++) strip += `<span class="strip-year" style="left:${pct(`${y}-01-01`)}%">${String(y).slice(2)}</span>`;
+  for (const y of idx.years) {
+    strip += `<span class="strip-year" style="left:${pct(`${y}-01-01`)}%">${String(y).slice(2)}</span>`;
+    if (idx.coverageByYear[y].coverageStatus === "NOT_COVERED") {
+      strip += `<span class="strip-nc" style="left:${pct(`${y}-01-01`)}%;width:${pct(`${y}-12-30`) - pct(`${y}-01-01`)}%" title="${y}: ${NOT_COVERED_LABEL}">미수록</span>`;
+    }
+  }
   ev.forEach((e, i) => {
-    strip += `<button type="button" class="strip-tick c-${e.certainty} v-${e.verification}" data-i="${i}" style="left:${pct(e.eventDate)}%" title="${e.eventDate} ${e.title.replace(/"/g, "'")} (${CERTAINTY[e.certainty].badge})"></button>`;
+    const g = idx.evidenceOfEvent(e);
+    const tip = `${formatRange(e.dateMin, e.dateMax, e.datePrecision)} ${e.title.replace(/"/g, "'")} (${CERTAINTY[e.certainty].badge} · ${e.provenance})`;
+    if (e.datePrecision === "YEAR" || e.datePrecision === "MONTH") {
+      const l = pct(e.dateMin), w = Math.max(0.6, pct(e.dateMax) - l);
+      strip += `<button type="button" class="strip-tick strip-span c-${e.certainty} v-${g}" data-i="${i}" style="left:${l}%;width:${w}%" title="${tip}"></button>`;
+    } else {
+      const before = e.dateMin == null ? " d-before" : "";
+      strip += `<button type="button" class="strip-tick c-${e.certainty} v-${g}${before}" data-i="${i}" style="left:${pct(idx.sortDateOf(e))}%" title="${tip}"></button>`;
+    }
   });
   strip += `<span class="strip-cursor" id="stripCursor"></span>`;
   $("eventStrip").innerHTML = strip;
@@ -60,16 +83,17 @@ export function createTimeline(idx, state, setCursor) {
   function render(passesFilter) {
     const e = ev[state.cursor];
     slider.value = state.cursor;
-    const span = e.eventEndDate ? `${formatDate(e.eventDate)}~${formatDate(e.eventEndDate)}` : formatDate(e.eventDate);
-    $("currentDate").textContent = e.eventDate === e.recordDate ? span : `${span} (기록 ${formatDate(e.recordDate)})`;
+    const span = formatRange(e.dateMin, e.dateMax, e.datePrecision);
+    const sameAsRecord = e.recordDate && e.dateMin === e.recordDate && e.dateMax === e.recordDate;
+    $("currentDate").textContent = sameAsRecord || !e.recordDate ? span : `${span} (기사 ${formatDate(e.recordDate)})`;
     $("currentEventTitle").textContent = e.title;
     $("currentCounter").textContent = `${state.cursor + 1} / ${ev.length}`;
-    $("stripCursor").style.left = `${pct(e.eventDate)}%`;
+    $("stripCursor").style.left = `${pct(idx.sortDateOf(e))}%`;
     document.querySelectorAll(".strip-tick").forEach((t, i) => {
       t.classList.toggle("on", i === state.cursor);
       t.classList.toggle("filtered", !passesFilter(ev[i]));
     });
-    document.querySelectorAll("#yearJumps button").forEach((b) => b.classList.toggle("on", +b.dataset.year === yearOf(e.eventDate)));
+    document.querySelectorAll("#yearJumps button").forEach((b) => b.classList.toggle("on", +b.dataset.year === yearOf(idx.sortDateOf(e))));
   }
   return { render, stop };
 }

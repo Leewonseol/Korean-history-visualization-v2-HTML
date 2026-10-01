@@ -2,7 +2,8 @@
    Cytoscape temporal multilayer network view
    - 세로 band = 시점별 level(L0~L6), 외부 행위자(L7)는 오른쪽 별도 영역(세력별 열)
    - 노드 색 = 세력, 모양 = entityType, 크기 = 선택 지표(기본은 균일)
-   - edge = (source, target, layer, 선모양) 단위로 집계한 contact 묶음
+   - edge = (source, target, layer, 선모양, 방향, 근거등급) 단위로 집계한 contact 묶음
+     undirected(방향 정책상 pack 근거가 있을 때만)는 화살표 없이, legacy는 점선·반투명으로 그린다.
    ========================================================================== */
 import { LEVELS, LAYERS, CERTAINTY, AFFILIATIONS, ENTITY_TYPES } from "../data/vocab.js";
 
@@ -14,7 +15,7 @@ const isExt = (p) => p.defaultLevel === "L7" || p.defaultLevel === "LU";
 
 export function createNetworkView(container, idx, handlers) {
   /* ---------- 고정 슬롯 계산(멘탈맵 유지): 같은 level 안에서 노드 순서는 시간이 흘러도 그대로 ---------- */
-  const levelsOf = (p) => new Set([p.defaultLevel, ...(idx.statesByPerson[p.personId] || []).map((s) => s.level)]);
+  const levelsOf = (p) => new Set([p.defaultLevel, ...(idx.attestationsByPerson[p.personId] || []).map((s) => s.level)]);
   const order = (a, b) => (a.affiliation + (idx.firstSeen[a.personId] || "9") + a.personId).localeCompare(b.affiliation + (idx.firstSeen[b.personId] || "9") + b.personId);
   const slot = {}; // `${id}|${level}` -> index
   const bandRows = {};
@@ -105,8 +106,9 @@ export function createNetworkView(container, idx, handlers) {
       const agg = new Map();
       for (const c of contacts) {
         const line = CERTAINTY[c.certainty].line;
-        const key = `rel:${c.source}|${c.target}|${c.layer}|${line}`;
-        if (!agg.has(key)) agg.set(key, { id: key, source: c.source, target: c.target, layer: c.layer, line, contactIds: [], current: false, last: c.startDate });
+        const key = `rel:${c.source}|${c.target}|${c.layer}|${line}|${c.direction}|${c.evidenceStatus}`;
+        if (!agg.has(key)) agg.set(key, { id: key, source: c.source, target: c.target, layer: c.layer, line, contactIds: [], current: false, last: c.startDate,
+          arrow: c.direction === "undirected" ? "none" : "triangle", evidence: c.evidenceStatus });
         const a = agg.get(key);
         a.contactIds.push(c.id);
         if (c.eventId === currentEventId) a.current = true;
@@ -116,9 +118,10 @@ export function createNetworkView(container, idx, handlers) {
       for (const a of agg.values()) {
         let e = cy.getElementById(a.id);
         if (e.empty()) e = cy.add({ group: "edges", data: { id: a.id, source: a.source, target: a.target }, classes: "rel" });
-        e.data({ color: LAYERS[a.layer].color, line: a.line, n: a.contactIds.length, contactIds: a.contactIds,
+        e.data({ color: LAYERS[a.layer].color, line: a.line, arrow: a.arrow, n: a.contactIds.length, contactIds: a.contactIds,
           width: 1.6 + Math.log2(a.contactIds.length) * 1.4, label: a.contactIds.length > 1 ? `×${a.contactIds.length}` : "" });
         e.toggleClass("current", a.current);
+        e.toggleClass("legacy", a.evidence === "legacy");
         e.toggleClass("past", !a.current);
       }
       // 장소 overlay
@@ -183,11 +186,12 @@ function stylesheet() {
       color: "#555", "text-valign": "bottom"
     } },
     { selector: "edge.rel", style: {
-      width: "data(width)", "line-color": "data(color)", "target-arrow-color": "data(color)", "target-arrow-shape": "triangle",
+      width: "data(width)", "line-color": "data(color)", "target-arrow-color": "data(color)", "target-arrow-shape": "data(arrow)",
       "line-style": "data(line)", "curve-style": "bezier", "arrow-scale": 0.9, label: "data(label)", "font-size": 9,
       color: "#444", "text-background-color": "#fff", "text-background-opacity": 0.7
     } },
     { selector: "edge.past", style: { opacity: 0.4 } },
+    { selector: "edge.legacy", style: { "line-style": "dashed", "line-dash-pattern": [2, 5], opacity: 0.55 } },
     { selector: "edge.current", style: { opacity: 1, width: "mapData(n, 1, 10, 3.5, 7)", "z-index": 5 } },
     { selector: "edge.place-edge", style: { width: 1, "line-color": "#b8bcc2", "line-style": "dashed", "target-arrow-shape": "none", opacity: 0.6, "curve-style": "straight" } },
     { selector: ".faded", style: { opacity: 0.08 } },

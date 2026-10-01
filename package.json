@@ -1,1 +1,1 @@
-{ "type": "module", "private": true, "scripts": { "validate": "node tools/validate.mjs", "test": "node tools/test.mjs" } }
+{"type": "module", "private": true, "scripts": {"validate": "node tools/validate.mjs", "test": "node tools/test.mjs", "integrity": "node tools/integrity.mjs", "build": "node tools/build-check.mjs", "research": "node tools/build-research.mjs"}}

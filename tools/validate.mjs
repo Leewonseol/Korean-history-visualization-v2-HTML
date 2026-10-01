@@ -3,9 +3,10 @@
 import { DATA } from "../src/data/index.js";
 import { validateData } from "../src/model/validate.js";
 
-const { errors, warnings, stats } = validateData(DATA);
+const { errors, warnings, notices, stats } = validateData(DATA);
 console.log("stats:", JSON.stringify(stats));
+notices.forEach((n) => console.log("NOTE ", n));
 warnings.forEach((w) => console.log("WARN ", w));
 errors.forEach((e) => console.log("ERROR", e));
-console.log(`\n${errors.length} error(s), ${warnings.length} warning(s)`);
+console.log(`\n${errors.length} error(s), ${warnings.length} warning(s), ${notices.length} notice(s)`);
 process.exit(errors.length ? 1 : 0);

@@ -1,10 +1,13 @@
 /* ==========================================================================
    Temporal metrics — 모든 정의는 research/methodology.md 와 README에 수식으로 기록.
-   입력은 이미 기간·layer·level·theater·certainty·사료유형 필터가 적용된 contacts다.
+   입력은 이미 기간·layer·level·theater·certainty·사료유형 필터가 적용된 contacts다
+   (기본: analysisContacts(..., "strict") — 시각이 확실히 기간 안에 있고 경로 대상인 verified 관계).
    정적 PageRank 등 시간을 무시하는 지표는 계산하지 않는다.
+   날짜 순서가 확정되지 않은 관계로 가짜 순서를 만들지 않기 위해, 도달·매개 계산은 strict 순서 규칙
+   (temporalPaths.traverse)을 쓰고, communicability는 일 단위로 확정된(exact) 관계만 시간 조각에 넣는다.
    ========================================================================== */
 import { toArcs } from "../model/deriveEdges.js";
-import { buildAdjacency, earliestArrival } from "./temporalPaths.js";
+import { buildAdjacency, earliestArrival, traverse } from "./temporalPaths.js";
 import { monthsBetween, yearOf } from "../model/dates.js";
 
 /**
@@ -13,7 +16,7 @@ import { monthsBetween, yearOf } from "../model/dates.js";
  * @param {object} opts { betweenness=true, communicability=true }
  */
 export function computeMetrics(contacts, win, opts = {}) {
-  const { betweenness = true, communicability = true } = opts;
+  const { betweenness = true, communicability = true, mode = "strict" } = opts;
   const nodes = [...new Set(contacts.flatMap((c) => [c.source, c.target]))].sort();
   const M = {};
   for (const n of nodes) {
@@ -28,7 +31,7 @@ export function computeMetrics(contacts, win, opts = {}) {
     s.outDeg++; t.inDeg++; s.outNbrs.add(c.target); t.inNbrs.add(c.source);
     if (both) { t.outDeg++; s.inDeg++; t.outNbrs.add(c.source); s.inNbrs.add(c.target); }
     for (const x of [s, t]) {
-      x.events.add(c.eventId); x.dates.push(c.startDate); x.years.add(yearOf(c.startDate));
+      x.events.add(c.eventId); x.dates.push(c.anchor); x.years.add(yearOf(c.anchor));
       x.layers[c.layer] = (x.layers[c.layer] || 0) + 1;
     }
   }
@@ -55,10 +58,10 @@ export function computeMetrics(contacts, win, opts = {}) {
     const adj = buildAdjacency(contacts);
     const arcs = toArcs(contacts);
     // 지연시간 기준점 t* = max(분석 시작, 기간 내 첫 contact 시각)
-    const firstC = contacts.reduce((m, c) => (c.startDate < m ? c.startDate : m), "9999-99-99");
+    const firstC = contacts.reduce((m, c) => (c.tMin !== null && c.tMin < m ? c.tMin : m), "9999-99-99");
     const base = firstC > win.from ? firstC : win.from;
     for (const s of nodes) {
-      const { arrival, hops } = earliestArrival(adj, [s], win.from, win.to);
+      const { arrival, hops } = earliestArrival(adj, [s], win.from, win.to, mode);
       // closeness: (1/(N-1)) Σ 1/(1+Δ개월),  Δ = a(v) − t*  (도달 못하면 0)
       let cl = 0, reach = 0;
       for (const [v, a] of arrival) {
@@ -74,10 +77,8 @@ export function computeMetrics(contacts, win, opts = {}) {
       const preds = new Map();
       for (const arc of arcs) {
         if (!arrival.has(arc.u) || !arrival.has(arc.v) || arc.v === s) continue;
-        const au = arrival.get(arc.u);
-        if (arc.end < au) continue;
-        const tau = arc.start > au ? arc.start : au;
-        if (tau > win.to) continue;
+        const tau = traverse(arc, arrival.get(arc.u), mode, win.to);
+        if (tau === null) continue;
         if (tau === arrival.get(arc.v) && hops.get(arc.u) + 1 === hops.get(arc.v)) {
           if (!preds.has(arc.v)) preds.set(arc.v, new Set());
           preds.get(arc.v).add(arc.u);
@@ -110,13 +111,13 @@ export function computeMetrics(contacts, win, opts = {}) {
 
   /* 9. broadcast / receive (Grindrod et al. 2011 dynamic communicability) */
   if (communicability && N > 0) {
-    const { broadcast, receive, alpha, slices } = dynamicCommunicability(contacts, nodes);
+    const { broadcast, receive, alpha, slices, excludedInexact } = dynamicCommunicability(contacts, nodes);
     nodes.forEach((n, i) => { M[n].broadcast = broadcast[i]; M[n].receive = receive[i]; });
-    M.__meta = { alpha, slices };
+    M.__meta = { alpha, slices, communicabilityExcludedInexact: excludedInexact };
   }
   const meta = M.__meta || {};
   delete M.__meta;
-  return { nodes, metrics: M, meta: { ...meta, N, years: nYears } };
+  return { nodes, metrics: M, meta: { ...meta, N, years: nYears, mode } };
 }
 
 /* ---------------- Dynamic communicability ----------------
@@ -128,10 +129,13 @@ export function computeMetrics(contacts, win, opts = {}) {
 export function dynamicCommunicability(contacts, nodes) {
   const N = nodes.length, ix = new Map(nodes.map((n, i) => [n, i]));
   const byDate = new Map();
+  let excludedInexact = 0;
   for (const a of toArcs(contacts)) {
-    // 구간 contact는 시작일 slice에 넣는다(현재 데이터의 관계는 모두 단일 날짜).
-    if (!byDate.has(a.start)) byDate.set(a.start, []);
-    byDate.get(a.start).push(a);
+    // 일 단위로 확정된 관계만 시간 조각에 넣는다. 범위·미상 날짜를 임의 날짜에 배치하지 않는다.
+    if (!a.contact.exact) { excludedInexact++; continue; }
+    const d = a.contact.tMin;
+    if (!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d).push(a);
   }
   const dates = [...byDate.keys()].sort();
   const mats = dates.map((d) => {
@@ -153,7 +157,7 @@ export function dynamicCommunicability(contacts, nodes) {
     const v = Q[i][j] - (i === j ? 1 : 0);
     broadcast[i] += v; receive[j] += v;
   }
-  return { broadcast, receive, alpha, slices: dates.length };
+  return { broadcast, receive, alpha, slices: dates.length, excludedInexact };
 }
 
 function identity(N) { return Array.from({ length: N }, (_, i) => { const r = new Float64Array(N); r[i] = 1; return r; }); }
@@ -201,12 +205,13 @@ export function personProfile(idx, personId, contacts) {
   const count = (pred) => mine.filter(pred).length;
   const isOut = (c) => c.source === personId, isIn = (c) => c.target === personId;
   const bridge = count((c) => {
-    const a = idx.levelAt(c.source, c.startDate), b = idx.levelAt(c.target, c.startDate);
+    const a = idx.levelAt(c.source, c.anchor), b = idx.levelAt(c.target, c.anchor);
     return (CENTER.has(a) && FIELD.has(b)) || (FIELD.has(a) && CENTER.has(b));
   });
   return {
     firstSeen: idx.firstSeen[personId], lastSeen: idx.lastSeen[personId],
     spanMonths: idx.firstSeen[personId] ? Math.max(0, monthsBetween(idx.firstSeen[personId], idx.lastSeen[personId])) : 0,
+    identity: idx.identityOf[personId],
     eventCount: evIds.size,
     relationCount: mine.length,
     layerDiversity: new Set(mine.map((c) => c.layer)).size,

@@ -18,6 +18,22 @@ export function parseDate(s) {
 
 export function isValidDate(s) { return parseDate(s) !== null; }
 
+// 범위 경계 문자열: 실제 날짜 + 월 단위('YYYY-MM-00'/'YYYY-MM-99') + 연 단위('YYYY-00-00'/'YYYY-99-99')
+const BOUND = /^(\d{4})-(\d{2})(L?)-(\d{2})$/;
+export function isValidBound(s) {
+  const m = BOUND.exec(s || "");
+  if (!m) return false;
+  const mo = +m[2], d = +m[4];
+  if (mo === 0) return d === 0 && !m[3];
+  if (mo === 99) return d === 99 && !m[3];
+  if (mo < 1 || mo > 12) return false;
+  return (d >= 0 && d <= 30) || d === 99;
+}
+// 일 단위로 확정된 실제 날짜인가(경계 표기가 아닌)
+export function isDayPrecise(s) { const p = parseDate(s); return !!p && p.m > 0 && p.d > 0; }
+export const MIN_BOUND = "0000-00-00";
+export const MAX_BOUND = "9999-99-99";
+
 export function cmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
 export function maxDate(a, b) { return a > b ? a : b; }
 export function minDate(a, b) { return a < b ? a : b; }
@@ -48,9 +64,22 @@ export function shiftMonths(s, n) {
 }
 
 export function formatDate(s) {
+  if (s && /-99-99$/.test(s)) return `${s.slice(0, 4)}년 말(경계)`;
+  if (s && /-99$/.test(s)) return formatDate(s.slice(0, -2) + "00").replace("(일 미상)", " 말(경계)");
   const p = parseDate(s);
   if (!p) return s || "—";
   if (p.m === 0) return `${p.y}년(월일 미상)`;
   const mm = `${p.leap ? "윤" : ""}${p.m}월`;
   return p.d === 0 ? `${p.y}년 ${mm}(일 미상)` : `${p.y}년 ${mm} ${p.d}일`;
+}
+
+// 범위 표기: dateMin~dateMax (null = 그쪽 경계 미상)
+export function formatRange(min, max, precision) {
+  if (precision === "YEAR" && min) return `${min.slice(0, 4)}년(연중 시점 미상)`;
+  if (precision === "MONTH" && min) return formatDate(min);
+  if (min && max && min === max) return formatDate(min);
+  if (!min && max) return `${formatDate(max)} 이전(정확한 시점 미상)`;
+  if (min && !max) return `${formatDate(min)} 이후(정확한 시점 미상)`;
+  if (!min && !max) return "시점 미상";
+  return `${formatDate(min)} ~ ${formatDate(max)}`;
 }

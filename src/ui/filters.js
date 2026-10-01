@@ -1,11 +1,8 @@
 /* ==========================================================================
-   왼쪽 필터 패널: 기간 · level · layer · theater · certainty · 사료 유형 · 지표
+   왼쪽 필터 패널: 근거(검증/legacy/해석) · 기간 · level · layer · theater · certainty · 사료 유형 · 지표
    모든 목록은 vocab과 실제 데이터에서 생성한다(HTML 하드코딩 없음).
    ========================================================================== */
-import { LEVELS, LEVEL_ORDER, LAYERS, THEATERS, THEATER_ORDER, CERTAINTY, CERTAINTY_ORDER, SOURCE_TYPES, AFFILIATIONS, ENTITY_TYPES, VERIFICATION } from "../data/vocab.js";
-
-const VERIF_KEYS = ["pack_v1", "inherited_v2", "seed_unverified"];
-const VERIF_SHORT = { pack_v1: "검증 source pack v1", inherited_v2: "v2 이관(원문 재대조 전)", seed_unverified: "미검증 시드" };
+import { LEVELS, LEVEL_ORDER, LAYERS, THEATERS, THEATER_ORDER, CERTAINTY, CERTAINTY_ORDER, SOURCE_TYPES, AFFILIATIONS, ENTITY_TYPES } from "../data/vocab.js";
 
 export const METRICS = {
   none:          "균일(강조 없음)",
@@ -32,7 +29,8 @@ export function defaultFilterState(idx) {
     theaters: new Set(THEATER_ORDER),
     certainties: new Set(CERTAINTY_ORDER),
     sourceTypes: new Set(Object.keys(SOURCE_TYPES)),
-    verifications: new Set(VERIF_KEYS),
+    includeLegacy: false,          // legacy / inherited v2 포함 [OFF]
+    includeInterpretation: false,  // 편집자 해석 포함 [OFF]
     metric: "none",
     showPlaces: false
   };
@@ -66,10 +64,29 @@ export function createFilters(idx, state, onChange) {
   checklist("filterTheater", THEATER_ORDER, "theaters", (k) => THEATERS[k].label);
   checklist("filterCertainty", CERTAINTY_ORDER, "certainties",
     (k) => `${CERTAINTY[k].label}`, (k) => sw("var(--ink-soft)", CERTAINTY[k].line));
-  const verCounts = {};
-  idx.contacts.forEach((c) => (verCounts[c.verification] = (verCounts[c.verification] || 0) + 1));
-  checklist("filterVerification", VERIF_KEYS, "verifications",
-    (k) => `<span title="${VERIFICATION[k]}">${VERIF_SHORT[k]}</span> <em class="count">${verCounts[k] || 0}</em>`);
+  // 근거 토글: 'pack v1 검증 데이터만'(기본 ON) · legacy 포함(OFF) · 해석 포함(OFF)
+  const evCounts = { verified: 0, legacy: 0, interpretation: 0 };
+  idx.contacts.forEach((c) => (evCounts[c.evidenceStatus] = (evCounts[c.evidenceStatus] || 0) + 1));
+  $("filterEvidence").innerHTML = `
+    <label class="filter-item"><input type="checkbox" id="evVerifiedOnly" checked><span>pack v1 검증 데이터만 <em class="count">${evCounts.verified}</em></span></label>
+    <label class="filter-item"><input type="checkbox" id="evIncludeLegacy"><span>legacy / v2 이관 포함 <em class="count">${evCounts.legacy}</em></span></label>
+    <label class="filter-item"><input type="checkbox" id="evIncludeInterp"><span>편집자 해석 포함 <em class="count">${evCounts.interpretation}</em></span></label>
+    <p class="muted small">숫자 = 관계 수. 지표 기본 데이터셋은 pack v1(직접+정규화). legacy·해석은 켤 때만 화면과 지표에 들어갑니다.</p>`;
+  const syncEvidence = () => {
+    $("evVerifiedOnly").checked = !state.f.includeLegacy && !state.f.includeInterpretation;
+    $("evIncludeLegacy").checked = state.f.includeLegacy;
+    $("evIncludeInterp").checked = state.f.includeInterpretation;
+  };
+  $("filterEvidence").addEventListener("change", (e) => {
+    if (e.target.id === "evVerifiedOnly") {
+      if (e.target.checked) { state.f.includeLegacy = false; state.f.includeInterpretation = false; }
+      else { syncEvidence(); return; }             // 끄려면 legacy 또는 해석을 켠다
+    }
+    if (e.target.id === "evIncludeLegacy") state.f.includeLegacy = e.target.checked;
+    if (e.target.id === "evIncludeInterp") state.f.includeInterpretation = e.target.checked;
+    syncEvidence();
+    onChange();
+  });
   checklist("filterSourceType", Object.keys(SOURCE_TYPES), "sourceTypes",
     (k) => `${SOURCE_TYPES[k]} <em class="count">${srcCounts[k] || 0}</em>`);
 
@@ -82,11 +99,10 @@ export function createFilters(idx, state, onChange) {
     onChange();
   }));
 
-  // 기간 (연도 목록은 EVENTS에서 자동 생성)
-  const years = idx.years;
-  const allYears = [];
-  for (let y = years[0]; y <= years[years.length - 1]; y++) allYears.push(y);
-  const opts = (sel) => allYears.map((y) => `<option value="${y}" ${y === sel ? "selected" : ""}>${y}${years.includes(y) ? "" : " (사건 없음)"}</option>`).join("");
+  // 기간 (연도 목록은 coverage 레지스트리에서 생성 — 사건 유무로 추론하지 않음)
+  const allYears = idx.years;
+  const covLabel = (y) => { const c = idx.coverageByYear[y]; return c && c.coverageStatus === "NOT_COVERED" ? " (현재 검증팩에서 미조사/미수록)" : ""; };
+  const opts = (sel) => allYears.map((y) => `<option value="${y}" ${y === sel ? "selected" : ""}>${y}${covLabel(y)}</option>`).join("");
   $("periodFrom").innerHTML = opts(state.f.yearFrom);
   $("periodTo").innerHTML = opts(state.f.yearTo);
   $("periodFrom").addEventListener("change", (e) => { state.f.yearFrom = +e.target.value; if (state.f.yearTo < state.f.yearFrom) { state.f.yearTo = state.f.yearFrom; $("periodTo").value = state.f.yearTo; } onChange(); });
@@ -111,7 +127,7 @@ export function createFilters(idx, state, onChange) {
   function createFiltersReset() {
     document.querySelectorAll("#panel-filters input[type=checkbox]").forEach((i) => {
       if (i.id === "limitToCursor") i.checked = true;
-      else if (i.id === "showPlaces") i.checked = false;
+      else if (i.id === "showPlaces" || i.id === "evIncludeLegacy" || i.id === "evIncludeInterp") i.checked = false;
       else i.checked = true;
     });
     $("periodFrom").value = state.f.yearFrom; $("periodTo").value = state.f.yearTo;
@@ -131,5 +147,7 @@ export function createFilters(idx, state, onChange) {
     <div class="legend-row">${sw("var(--ink)", "solid")}사료에 기록된 사실</div>
     <div class="legend-row">${sw("var(--ink)", "dotted")}당대 주장 · 다툼</div>
     <div class="legend-row">${sw("var(--ink)", "dashed")}해석 · 2차자료 · 미검증 시드</div>
+    <div class="legend-row">${sw("var(--ink-soft)", "dashed")}<span>반투명 잔 점선 = legacy(v2 이관) — 토글을 켰을 때만</span></div>
+    <div class="legend-row">화살표 없음 = 양방향(pack이 '&lt;-&gt;'로 기록한 경우만)</div>
     <div class="legend-row muted">흐린 선 = 현재 사건 이전 관계, 굵은 선 = 현재 사건의 관계</div>`;
 }

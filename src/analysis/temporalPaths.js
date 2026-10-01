@@ -1,22 +1,42 @@
 /* ==========================================================================
-   Time-respecting paths
+   Time-respecting paths (불확실한 날짜를 정직하게 다루는 버전)
    ---------------------------------------------------------------------------
-   contact = (u → v, [start, end])  — 날짜 문자열(사전순 = 시간순)
-   이동 시간(traversal time) = 0 으로 둔다(같은 날 연쇄 허용).
+   contact c: u → v, 시각 범위 [tMin, tMax] (null = 미상), timeKind instant|duration
+   이동 시간 = 0 (같은 날 연쇄 허용 — 단, 같은 날 연쇄는 '부분 순서'로 표시)
 
-   경로 P = (c1, c2, …, ck), 각 ci 에서 실제 사용 시각 τi ∈ [start_i, end_i] 이고
-     τ1 ≥ t0,  τ1 ≤ τ2 ≤ … ≤ τk ≤ T
-   일 때만 time-respecting 이다. (A→B가 t1, B→C가 t2 이면 t1 ≤ t2 일 때만 A→B→C 성립)
+   두 가지 순서 판정 모드
+   strict(확실한 순서, 분석 기본값)
+     instant  : 직전 도착 a 이후임이 확실해야 사용 → tMin ≠ null, tMin ≥ a.  새 도착 = tMax (보수적)
+     duration : 지속 구간이 a 이후까지 이어져야 사용 → tMin·tMax ≠ null, tMax ≥ a. 새 도착 = max(a, tMin)
+   possible(가능한 순서)
+     lo = tMin ?? −∞, hi = tMax ?? +∞.  hi ≥ a 이면 사용. 새 도착 = max(a, lo) (낙관적)
 
-   라벨 L(v) = (a(v), h(v)) 를 사전식(lexicographic)으로 최소화하는 label-setting(Dijkstra형)
-   알고리즘으로 계산한다.
-     a(v): 가장 이른 도착 시각(earliest arrival / foremost)
-     h(v): 그 라벨을 만든 경로의 hop 수
-   경로를 따라가는 비용 (τ, hop)은 단조 증가하므로 label-setting이 정당하다.
-   여기서 계산되는 경로는 "모든 접두부(prefix)가 라벨 최적인 foremost 경로"다
-   (methodology.md §5 참조).
+   두 모드 모두 도착 시각이 단조 비감소이므로 (도착, hop) 사전식 label-setting(Dijkstra형)이 정당하다.
+   pathEligible=false 관계('~에 관한' 주장 등)는 analysisContacts 단계에서 이미 빠진다.
+
+   경로 플래그(classifyPath)
+     EXACT         : 모든 관계가 일 단위 단일 날짜이고, 단계마다 날짜가 엄격히 증가
+     PARTIAL_ORDER : 순서는 확실하지만 같은 날 연쇄 또는 범위 날짜가 섞여 정확한 시각은 모름
+     UNCERTAIN     : 적어도 한 단계의 순서가 날짜만으로는 확정되지 않음(possible 모드에서만 발생)
    ========================================================================== */
 import { toArcs } from "../model/deriveEdges.js";
+import { MIN_BOUND, MAX_BOUND } from "../model/dates.js";
+
+/** 시각 t에 u에 도착했을 때 arc를 지나 v에 도착하는 시각(못 쓰면 null) */
+export function traverse(arc, t, mode = "strict", T = MAX_BOUND) {
+  const c = arc.contact;
+  let next;
+  if (mode === "strict") {
+    if (c.tMin === null || c.tMax === null) return null;
+    if (c.timeKind === "duration") { if (c.tMax < t) return null; next = c.tMin > t ? c.tMin : t; }
+    else { if (c.tMin < t) return null; next = c.tMax; }
+  } else {
+    const lo = c.tMin ?? MIN_BOUND, hi = c.tMax ?? MAX_BOUND;
+    if (hi < t) return null;
+    next = lo > t ? lo : t;
+  }
+  return next > T ? null : next;
+}
 
 function better(a1, h1, a2, h2) {
   if (a2 === undefined) return true;
@@ -47,13 +67,9 @@ export function buildAdjacency(contacts) {
 
 /**
  * 단일/복수 출발점에서의 earliest-arrival(라벨 최적) 탐색
- * @param {Map} adj      buildAdjacency 결과
- * @param {string[]} sources 출발 노드(사건에서 출발할 때는 그 사건의 행위자들)
- * @param {string} t0    출발 가능 시각(이 시각 이후의 contact만 사용)
- * @param {string} T     마감 시각
  * @returns {{arrival:Map, hops:Map, pred:Map}}
  */
-export function earliestArrival(adj, sources, t0, T = "9999-99-99") {
+export function earliestArrival(adj, sources, t0, T = MAX_BOUND, mode = "strict") {
   const arrival = new Map(), hops = new Map(), pred = new Map();
   const heap = new Heap();
   for (const s of sources) { arrival.set(s, t0); hops.set(s, 0); heap.push({ n: s, t: t0, h: 0 }); }
@@ -61,9 +77,8 @@ export function earliestArrival(adj, sources, t0, T = "9999-99-99") {
     const { n, t, h } = heap.pop();
     if (t !== arrival.get(n) || h !== hops.get(n)) continue; // 낡은 항목
     for (const arc of adj.get(n) || []) {
-      if (arc.end < t || arc.start > T) continue;            // 이미 끝난 contact는 쓸 수 없다(시간 역행 금지)
-      const tau = arc.start > t ? arc.start : t;              // 사용 시각 = max(도착시각, contact 시작)
-      if (tau > T) continue;
+      const tau = traverse(arc, t, mode, T);
+      if (tau === null) continue;
       const nh = h + 1;
       if (better(tau, nh, arrival.get(arc.v), hops.get(arc.v))) {
         arrival.set(arc.v, tau); hops.set(arc.v, nh);
@@ -76,9 +91,9 @@ export function earliestArrival(adj, sources, t0, T = "9999-99-99") {
 }
 
 /** 출발점 집합 → target 까지의 time-respecting 경로(단계 목록) 또는 null */
-export function temporalPath(contacts, sources, target, t0, T) {
+export function temporalPath(contacts, sources, target, t0, T, mode = "strict") {
   const adj = buildAdjacency(contacts);
-  const res = earliestArrival(adj, sources, t0, T);
+  const res = earliestArrival(adj, sources, t0, T, mode);
   if (!res.arrival.has(target) || sources.includes(target)) return null;
   const steps = [];
   let cur = target;
@@ -88,47 +103,66 @@ export function temporalPath(contacts, sources, target, t0, T) {
     cur = p.from;
   }
   steps.reverse();
-  return { steps, arrival: res.arrival.get(target), hops: steps.length };
+  return { steps, arrival: res.arrival.get(target), hops: steps.length, mode, flag: classifyPath(steps, t0) };
 }
 
-/** 경로가 시간을 역행하지 않는지 검사(테스트·UI 검증용) */
-export function isTimeRespecting(steps, t0 = "0000-00-00") {
-  let prev = t0;
+/** 경로 플래그: EXACT / PARTIAL_ORDER / UNCERTAIN (위 설명 참조) */
+export function classifyPath(steps, t0 = MIN_BOUND) {
+  let cons = t0, certain = true, allExact = true, strictlyIncreasing = true, prevExact = null;
   for (const s of steps) {
     const c = s.contact;
-    if (s.time < prev) return false;
-    if (s.time < c.startDate || s.time > c.endDate) return false;
-    prev = s.time;
+    const next = traverse({ contact: c }, cons, "strict");
+    if (next === null) { certain = false; cons = c.tMax ?? cons; }
+    else cons = next;
+    if (!c.exact) allExact = false;
+    if (c.exact && prevExact !== null && c.tMin <= prevExact) strictlyIncreasing = false;
+    prevExact = c.exact ? c.tMin : null;
   }
-  for (let i = 1; i < steps.length; i++) if (steps[i].from !== steps[i - 1].to) return false;
+  if (!certain) return "UNCERTAIN";
+  return allExact && strictlyIncreasing ? "EXACT" : "PARTIAL_ORDER";
+}
+
+/** 경로가 시간을 역행하지 않는지 검사(테스트·UI 검증용). mode에 맞는 순서 규칙으로 다시 따라간다. */
+export function isTimeRespecting(steps, t0 = MIN_BOUND, mode = "strict") {
+  let t = t0;
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    if (i > 0 && s.from !== steps[i - 1].to) return false;
+    if (mode === "strict" && !s.contact.pathEligible) return false;
+    const next = traverse({ contact: s.contact }, t, mode);
+    if (next === null || next !== s.time) return false;
+    t = next;
+  }
   return true;
 }
 
 /**
  * 피드백 루프: anchor → … → x → anchor 의 time-respecting 순환.
- * anchor에서 t0에 출발해 x에 a(x)에 도착하고, x→anchor contact가 a(x) 이후에 존재하면 루프.
- * x마다 가장 이른 귀환 루프 하나를 돌려준다.
+ * x마다 가장 이른 귀환 루프 하나를 돌려준다. 플래그는 경로와 같은 규칙.
  */
-export function feedbackLoops(contacts, anchor, t0, T) {
+export function feedbackLoops(contacts, anchor, t0, T, mode = "strict") {
   const adj = buildAdjacency(contacts);
-  const res = earliestArrival(adj, [anchor], t0, T);
+  const res = earliestArrival(adj, [anchor], t0, T, mode);
   const loops = [];
   const seen = new Set();
-  const arcs = toArcs(contacts).filter((a) => a.v === anchor && a.u !== anchor)
-    .sort((a, b) => (a.start < b.start ? -1 : 1));
+  const arcs = toArcs(contacts).filter((a) => a.v === anchor && a.u !== anchor);
+  const cands = [];
   for (const arc of arcs) {
     const x = arc.u;
-    if (seen.has(x) || !res.arrival.has(x)) continue;
-    const ax = res.arrival.get(x);
-    if (arc.end < ax || arc.start > T) continue;
-    const back = arc.start > ax ? arc.start : ax;
+    if (!res.arrival.has(x)) continue;
+    const back = traverse(arc, res.arrival.get(x), mode, T);
+    if (back !== null) cands.push({ arc, x, back });
+  }
+  cands.sort((a, b) => (a.back < b.back ? -1 : a.back > b.back ? 1 : 0));
+  for (const { arc, x, back } of cands) {
+    if (seen.has(x)) continue;
     const out = [];
     let cur = x;
     while (cur !== anchor) { const p = res.pred.get(cur); out.push({ from: p.from, to: cur, time: p.time, contact: p.arc.contact }); cur = p.from; }
     out.reverse();
     out.push({ from: x, to: anchor, time: back, contact: arc.contact });
     seen.add(x);
-    loops.push({ via: x, steps: out, closedAt: back });
+    loops.push({ via: x, steps: out, closedAt: back, mode, flag: classifyPath(out, t0) });
   }
-  return loops.sort((a, b) => (a.closedAt < b.closedAt ? -1 : 1));
+  return loops;
 }

@@ -112,6 +112,7 @@ select { border: 1px solid var(--border); background: var(--panel-bg); border-ra
 .strip-tick { position: absolute; top: 4px; width: 8px; height: 14px; margin-left: -4px; border: none; border-radius: 2px; background: var(--accent); cursor: pointer; padding: 0; }
 .strip-tick.c-unverified_seed { background: transparent; border: 1.5px dashed var(--muted); }
 .strip-tick.c-contemporary_claim, .strip-tick.c-disputed { background: #805ad5; }
+.strip-tick.v-inherited_v2 { background: #8aa1c1; }
 .strip-tick.filtered { opacity: 0.2; }
 .strip-tick.on { outline: 2px solid #e0a100; z-index: 2; }
 .strip-cursor { position: absolute; top: 0; bottom: 0; width: 2px; background: #e0a100; pointer-events: none; }
@@ -136,7 +137,8 @@ select { border: 1px solid var(--border); background: var(--panel-bg); border-ra
 .ev-verif { font-size: 11px; margin-top: 2px; }
 .verif-seed_unverified { color: var(--warn-ink); }
 .verif-inherited_v2 { color: var(--ink-soft); }
-.verif-text_checked { color: #2f6f4f; }
+.verif-text_checked, .verif-pack_v1 { color: #2f6f4f; }
+.verif-tag { font-size: 10px; border: 1px dashed var(--muted); border-radius: 3px; padding: 0 3px; color: var(--ink-soft); }
 .kv { display: grid; grid-template-columns: 84px 1fr; gap: 6px; font-size: 12.5px; margin: 3px 0; }
 .kv .k { color: var(--muted); }
 .note { background: var(--accent-soft); border-radius: 4px; padding: 6px 8px; font-size: 12px; margin: 6px 0; }

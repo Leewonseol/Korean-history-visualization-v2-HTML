@@ -66,6 +66,12 @@ check("layer 필터 후 POLICY contact 없음", !(await contactLayers()).include
 await page.check('#filterLayer input[value="POLICY"]');
 check("layer 필터 복원", (await relEdgeCount()) === allEdges);
 
+/* 3b. 근거 등급 필터 */
+await page.uncheck('#filterVerification input[value="inherited_v2"]');
+const verifs = await app(() => [...new Set(window.__app.last().displayContacts.map((c) => c.verification))]);
+check("근거 등급 필터(v2 이관 해제) → v2 관계 제외", !verifs.includes("inherited_v2") && (await relEdgeCount()) < allEdges, verifs.join(","));
+await page.check('#filterVerification input[value="inherited_v2"]');
+
 /* 4. level filter */
 await page.uncheck('#filterLevel input[value="L0"]');
 const hasSejong = await app(() => window.__app.net.cy.getElementById("JO_SEJONG").nonempty());
@@ -95,11 +101,22 @@ await page.selectOption("#pathTo", "JO_PARKCHO");
 await page.click("#btnPath");
 check("과거 edge로 거슬러 가는 경로는 없음(김윤수→박초)", (await app(() => window.__app.state.pathUI.result)) === null);
 // 사건 출발 경로
-await page.selectOption("#pathFrom", "event:E1433_02");
+await page.selectOption("#pathFrom", "event:E1433_0226");
 await page.selectOption("#pathTo", "JZ_MANJU");
 await page.click("#btnPath");
 const p2 = await app(() => window.__app.state.pathUI.result);
 check("사건(1433-02-26) 출발 경로 → 이만주", !!p2 && p2.steps[0].time >= "1433-02-26", p2 ? p2.steps.map((s) => `${s.from}->${s.to}@${s.time}`).join(" ") : "none");
+// 사료팩 기반 정보→보고 경로: 도을온 → 김종서 → 세종 (1439)
+await page.selectOption("#pathFrom", "JZ_DOEULON");
+await page.selectOption("#pathTo", "JO_SEJONG");
+await page.click("#btnPath");
+const p3 = await app(() => window.__app.state.pathUI.result);
+check("정보원→김종서→세종 경로(1439, 시간 순행)", !!p3 && p3.ok && p3.steps.some((s) => s.to === "JO_KIMJONGSEO"), p3 ? p3.steps.map((s) => `${s.from}->${s.to}@${s.time}`).join(" ") : "none");
+// 현장 보고 경로: 최윤덕 → 박호문 → 세종 (1433-05-07)
+await page.selectOption("#pathFrom", "JO_PARKHOMUN");
+await page.selectOption("#pathTo", "JO_SEJONG");
+await page.click("#btnPath");
+check("박호문 → 세종 보고 경로", !!(await app(() => window.__app.state.pathUI.result)));
 await page.click("#btnPathClear");
 // 피드백 루프
 await page.selectOption("#loopAnchor", "JO_SEJONG");
@@ -149,7 +166,7 @@ await page.click("#storyExit");
 check("최종 콘솔 오류 없음", consoleErrors.length === 0, consoleErrors.join(" | "));
 
 if (SHOT) {
-  await app(() => window.__app.setCursor(window.__app.idx.events.findIndex((e) => e.id === "E1433_09")));
+  await app(() => window.__app.setCursor(window.__app.idx.events.findIndex((e) => e.id === "E1433_0517")));
   await page.click('[data-person="JO_CHOEYUNDEOK"]').catch(() => {});
   await page.click('.tab[data-tab="event"]');
   await page.screenshot({ path: SHOT });

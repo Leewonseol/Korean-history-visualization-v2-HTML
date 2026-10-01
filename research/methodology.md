@@ -18,11 +18,13 @@
 ## 2. Multilevel 과 Multilayer 의 구분
 
 - **LEVEL = 행위자의 제도적 위치** (노드 속성, 시간 가변): L0 왕 / L1 중앙 정책·행정 관료 / L2 중앙 군사 엘리트 / L3 지방 최고지휘관 /
-  L4 현장 지휘관·군관·지방관 / L5 군졸 / L6 지방 주민 / L7 외부 정치·군사 행위자.
+  L4 현장 지휘관·군관·지방관 / L5 군졸 / L6 지방 주민 / L7 외부 정치·군사 행위자 / **LU 소속·위치 미상**
+  (예: 출처 미상의 첩보 제공자, 출신이 기재되지 않은 하사 노비 — 추정해서 다른 level에 넣지 않기 위함).
   `levelAt(person, t)` = t를 덮는 PERSON_STATE의 level, 없으면 `defaultLevel`. 화면의 세로 band는 커서 시점의 level이다.
 - **LAYER = 관계의 종류** (edge 속성): POLICY, COMMAND, REPORT, INTELLIGENCE, INVESTIGATION, LOGISTICS, MILITARY_ACTION,
   MILITARY_CONFLICT, DIPLOMACY, CLAIM, COUNTER_CLAIM, REWARD, PUNISHMENT, ACCOUNTABILITY, WELFARE, FORTIFICATION,
-  RESETTLEMENT, BORDER_ADMINISTRATION, COOPERATION. 세부 행위는 `relationType`(예: advise, solicit_opinion, propose_reward,
+  RESETTLEMENT, BORDER_ADMINISTRATION, COOPERATION, **LABOR_MOBILIZATION**(부역·축성 노동 동원 — 군사 동원(COMMAND)이나
+  축성 행위(FORTIFICATION)와 의미가 달라 추가). 세부 행위는 `relationType`(예: advise, solicit_opinion, propose_reward,
   official_accusation)으로 구분하고 같은 의미의 layer를 새로 만들지 않는다.
   - v2의 MEDIATION → DIPLOMACY(`mediation_order`), POLICY_ADVICE/POLICY_DISAGREEMENT → POLICY(`advise`/`remonstrate`),
     ACCUSATION → CLAIM(`official_accusation`), DEFENSE_REFORM → FORTIFICATION, MIGRATION → RESETTLEMENT,
@@ -37,9 +39,24 @@
 - 문자열 사전순 = 시간순이 되도록 설계했다(`'-' < 'L'`이므로 8월 < 윤8월 < 9월).
 - `eventDate`: 실제 발생일. 기사에 발생일이 따로 없으면 `eventDate = recordDate`, `datePrecision = record_date_only`.
   월만 알면 day `00`, `datePrecision = month`.
+- 연 단위만 알려진 사건(『세종실록』 지리지 서술)은 `YYYY-00-00`, `datePrecision = year`. 그 해의 모든 날짜보다 앞에 정렬된다.
+- 발생이 기간이면 `eventEndDate`(예: 1433-04-10~04-19 공격, 1437-09-07~09-16 정벌). 관계도 `startDate/endDate` 구간을 가질 수 있다
+  (예: 9/16~9/22 사이 발송된 승첩 보고, 2/15~3/15 부역).
 - `recordDate`: 실록 기사 게재일. `validateData()`는 recordDate가 그 사건 실록 사료의 게재일 중 하나와 같은지 검사해
   사건일·기록일 혼동을 잡는다.
 - 기간 길이·지연시간은 근사 월 인덱스 `m(t) = 12·y + (월−1) + 0.5·[윤달] + (일−1)/30`으로 계산한다(정확한 일수 아님).
+
+## 3-1. 근거 등급과 수신자 표기 관례
+
+- `verification`: `pack_v1`(사용자가 실록 원문과 대조한 VALIDATED HISTORICAL SOURCE PACK v1) / `inherited_v2`(이전 데이터셋 요약, 원문 재대조 전) /
+  `seed_unverified` / `not_accessed`(내용 미확인 — 근거 사용 금지). 사건 단위와 **관계 단위**로 모두 기록하며, 화면 왼쪽 '근거 등급' 필터로 거를 수 있다.
+- 사료가 '조정/국왕에게' 보고·전달했다고 하면 target = 세종(조정 보고의 최종 수신자).
+- 사료가 '조선 측' 또는 '국가(state)'로만 쓰면 `ORG_JOSEON_COURT`(주체·수신자 미특정). 이 노드로 끊긴 경로는 끊긴 그대로 둔다 —
+  경로를 잇기 위해 수신자를 추정하지 않는다.
+- 직위만 기록된 주체(평안도 감사, 함길도 도절제사 등)는 기관 노드로 두고 실명 인물과 병합하지 않는다.
+- 기사에 이름은 나오지만 행위가 기록되지 않은 인물은 `subjects`(언급 대상)에만 넣고 관계를 만들지 않는다.
+- '기대된 회신'(예: 1436 세종이 이천에게 검토를 요구)처럼 아직 일어나지 않은 행위는 관계로 만들지 않는다.
+- 실록 편찬자의 평가(예: 1446 무창 실패의 원인 서술)는 행위자의 처벌 행위가 아니므로 관계가 아닌 결과(`attributed_failure`)로 기록한다.
 
 ## 4. Temporal network 정의
 
@@ -134,38 +151,39 @@ Temporal PageRank(Rozenshtein & Gionis 2016), temporal eigenvector(Taylor et al.
 ## 9. 현재 데이터 통계
 
 <!-- GENERATED:STATS -->
-- 사건 35 · 행위자 65 · 장소 15 · 사료 32 · relation(edge) 94 · 인물 상태 23
+- 사건 70 · 행위자 147 · 장소 45 · 사료 69 · relation(edge) 242 · 인물 상태 28
 
 | layer | edge 수 |
 |---|---|
-| POLICY (정책(건의·논의·결정)) | 33 |
-| COMMAND (명령·임명·파견) | 12 |
-| REPORT (보고(장계·치계·회계)) | 4 |
-| INTELLIGENCE (정보·제보) | 2 |
+| POLICY (정책(건의·논의·결정)) | 78 |
+| COMMAND (명령·임명·파견) | 38 |
+| REPORT (보고(장계·치계·회계)) | 16 |
+| INTELLIGENCE (정보·제보) | 13 |
 | INVESTIGATION (조사) | 1 |
 | LOGISTICS (병참·군량·병기) | 0 |
-| MILITARY_ACTION (군사행동(추격·배치·정찰)) | 1 |
-| MILITARY_CONFLICT (무력충돌) | 12 |
-| DIPLOMACY (외교·통교·중재) | 12 |
-| CLAIM (주장·문죄) | 3 |
-| COUNTER_CLAIM (반박 주장) | 2 |
-| REWARD (포상) | 3 |
-| PUNISHMENT (처벌·처분) | 1 |
-| ACCOUNTABILITY (책임추궁·탄핵) | 3 |
-| WELFARE (전사자·피해자 예우) | 3 |
-| FORTIFICATION (축성·진보 설치·방비) | 1 |
-| RESETTLEMENT (사민·입거·이주) | 1 |
-| BORDER_ADMINISTRATION (변경 행정(군현·진 설치)) | 0 |
+| MILITARY_ACTION (군사행동(추격·배치·정찰)) | 3 |
+| MILITARY_CONFLICT (무력충돌) | 14 |
+| DIPLOMACY (외교·통교·중재) | 22 |
+| CLAIM (주장·문죄) | 4 |
+| COUNTER_CLAIM (반박 주장) | 3 |
+| REWARD (포상) | 17 |
+| PUNISHMENT (처벌·처분) | 3 |
+| ACCOUNTABILITY (책임추궁·탄핵) | 4 |
+| WELFARE (전사자·피해자 예우) | 6 |
+| FORTIFICATION (축성·진보 설치·방비) | 7 |
+| RESETTLEMENT (사민·입거·이주) | 4 |
+| BORDER_ADMINISTRATION (변경 행정(군현·진 설치)) | 6 |
+| LABOR_MOBILIZATION (부역·노동 동원) | 3 |
 | COOPERATION (협력) | 0 |
 
 | certainty | edge 수 |
 |---|---|
-| confirmed | 83 |
+| confirmed | 231 |
 | contemporary_claim | 5 |
 | disputed | 0 |
-| interpretation | 1 |
+| interpretation | 5 |
 | secondary_only | 0 |
-| unverified_seed | 5 |
+| unverified_seed | 1 |
 <!-- /GENERATED:STATS -->
 
 ## 참고문헌

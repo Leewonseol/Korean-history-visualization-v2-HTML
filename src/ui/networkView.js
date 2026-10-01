@@ -6,10 +6,11 @@
    ========================================================================== */
 import { LEVELS, LAYERS, CERTAINTY, AFFILIATIONS, ENTITY_TYPES } from "../data/vocab.js";
 
-const COL_W = 100, ROW_H = 62, PER_ROW = 6, BAND_GAP = 40, BAND_X0 = 0;
-const EXT_X0 = BAND_X0 + PER_ROW * COL_W + 80, EXT_COL_W = 108, EXT_ROW_H = 70;
+const COL_W = 100, ROW_H = 62, PER_ROW = 8, BAND_GAP = 40, BAND_X0 = 0;
+const EXT_X0 = BAND_X0 + PER_ROW * COL_W + 80, EXT_COL_W = 104, EXT_ROW_H = 66, EXT_MAX_ROWS = 11;
 const JOSEON_LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5", "L6"];
-const EXT_AFFS = ["JIANZHOU_WEI", "PAJEOGANG_OTHER", "JURCHEN_UNSPEC", "JIANZHOU_LEFT", "HOLLAON", "ORYANGHAP", "MING"];
+const EXT_AFFS = ["JIANZHOU_WEI", "PAJEOGANG_OTHER", "JIANZHOU_LEFT", "ODORI", "JURCHEN_UNSPEC", "HOLLAON", "ORYANGHAP", "UDIGE", "MING", "UNKNOWN"];
+const isExt = (p) => p.defaultLevel === "L7" || p.defaultLevel === "LU";
 
 export function createNetworkView(container, idx, handlers) {
   /* ---------- 고정 슬롯 계산(멘탈맵 유지): 같은 level 안에서 노드 순서는 시간이 흘러도 그대로 ---------- */
@@ -26,17 +27,23 @@ export function createNetworkView(container, idx, handlers) {
   let y = 0;
   for (const L of JOSEON_LEVELS) { bandY[L] = y; y += bandRows[L] * ROW_H + BAND_GAP; }
   const placeBandY = y + 20;
-  const extSlot = {};
+  // 외부 행위자: 세력별 열. 한 세력이 많으면 하위 열로 접어 넣는다.
+  const extSlot = {}, affX = {};
+  let col = 0;
   EXT_AFFS.forEach((aff) => {
-    Object.values(idx.peopleById).filter((p) => p.defaultLevel === "L7" && p.affiliation === aff).sort(order)
-      .forEach((p, i) => (extSlot[p.personId] = { col: EXT_AFFS.indexOf(aff), row: i }));
+    const members = Object.values(idx.peopleById).filter((p) => isExt(p) && p.affiliation === aff).sort(order);
+    affX[aff] = EXT_X0 + col * EXT_COL_W;
+    members.forEach((p, i) => (extSlot[p.personId] = { col: col + Math.floor(i / EXT_MAX_ROWS), row: i % EXT_MAX_ROWS }));
+    col += Math.max(1, Math.ceil(members.length / EXT_MAX_ROWS));
   });
+  const xCursor = EXT_X0 + col * EXT_COL_W;
 
   function positionOf(id, level) {
-    if (level === "L7" || extSlot[id]) {
-      const s = extSlot[id] || { col: 2, row: 0 };
-      return { x: EXT_X0 + s.col * EXT_COL_W, y: 40 + s.row * EXT_ROW_H + (s.col % 2) * 24 };
+    if (extSlot[id]) {
+      const s = extSlot[id];
+      return { x: EXT_X0 + s.col * EXT_COL_W, y: 50 + s.row * EXT_ROW_H + (s.col % 2) * 22 };
     }
+    if (level === "L7" || level === "LU") return { x: xCursor, y: 50 };
     const i = slot[`${id}|${level}`] ?? 0;
     return { x: BAND_X0 + (i % PER_ROW) * COL_W + (Math.floor(i / PER_ROW) % 2) * (COL_W / 2), y: bandY[level] + Math.floor(i / PER_ROW) * ROW_H };
   }
@@ -46,10 +53,10 @@ export function createNetworkView(container, idx, handlers) {
     group: "nodes", data: { id: `band:${L}`, label: LEVELS[L].label }, classes: "band",
     position: { x: BAND_X0 - 120, y: bandY[L] + ((bandRows[L] - 1) * ROW_H) / 2 }
   }));
-  bandNodes.push({ group: "nodes", data: { id: "band:L7", label: LEVELS.L7.label }, classes: "band band-ext", position: { x: EXT_X0 + 2.5 * EXT_COL_W, y: -40 } });
+  bandNodes.push({ group: "nodes", data: { id: "band:L7", label: `${LEVELS.L7.label} · ${LEVELS.LU.label}` }, classes: "band band-ext", position: { x: (EXT_X0 + xCursor) / 2, y: -50 } });
   EXT_AFFS.forEach((aff, i) => bandNodes.push({
     group: "nodes", data: { id: `band:aff:${aff}`, label: AFFILIATIONS[aff].label }, classes: "band band-col",
-    position: { x: EXT_X0 + i * EXT_COL_W, y: -6 + (i % 2) * 24 }
+    position: { x: affX[aff], y: -10 + (i % 2) * 26 }
   }));
 
   const cy = cytoscape({

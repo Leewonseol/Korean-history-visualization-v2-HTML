@@ -2,7 +2,10 @@
    왼쪽 필터 패널: 기간 · level · layer · theater · certainty · 사료 유형 · 지표
    모든 목록은 vocab과 실제 데이터에서 생성한다(HTML 하드코딩 없음).
    ========================================================================== */
-import { LEVELS, LEVEL_ORDER, LAYERS, THEATERS, THEATER_ORDER, CERTAINTY, CERTAINTY_ORDER, SOURCE_TYPES, AFFILIATIONS, ENTITY_TYPES } from "../data/vocab.js";
+import { LEVELS, LEVEL_ORDER, LAYERS, THEATERS, THEATER_ORDER, CERTAINTY, CERTAINTY_ORDER, SOURCE_TYPES, AFFILIATIONS, ENTITY_TYPES, VERIFICATION } from "../data/vocab.js";
+
+const VERIF_KEYS = ["pack_v1", "inherited_v2", "seed_unverified"];
+const VERIF_SHORT = { pack_v1: "검증 source pack v1", inherited_v2: "v2 이관(원문 재대조 전)", seed_unverified: "미검증 시드" };
 
 export const METRICS = {
   none:          "균일(강조 없음)",
@@ -29,6 +32,7 @@ export function defaultFilterState(idx) {
     theaters: new Set(THEATER_ORDER),
     certainties: new Set(CERTAINTY_ORDER),
     sourceTypes: new Set(Object.keys(SOURCE_TYPES)),
+    verifications: new Set(VERIF_KEYS),
     metric: "none",
     showPlaces: false
   };
@@ -62,6 +66,10 @@ export function createFilters(idx, state, onChange) {
   checklist("filterTheater", THEATER_ORDER, "theaters", (k) => THEATERS[k].label);
   checklist("filterCertainty", CERTAINTY_ORDER, "certainties",
     (k) => `${CERTAINTY[k].label}`, (k) => sw("var(--ink-soft)", CERTAINTY[k].line));
+  const verCounts = {};
+  idx.contacts.forEach((c) => (verCounts[c.verification] = (verCounts[c.verification] || 0) + 1));
+  checklist("filterVerification", VERIF_KEYS, "verifications",
+    (k) => `<span title="${VERIFICATION[k]}">${VERIF_SHORT[k]}</span> <em class="count">${verCounts[k] || 0}</em>`);
   checklist("filterSourceType", Object.keys(SOURCE_TYPES), "sourceTypes",
     (k) => `${SOURCE_TYPES[k]} <em class="count">${srcCounts[k] || 0}</em>`);
 

@@ -48,7 +48,9 @@ export function validateData(data) {
     (byName[p.canonicalName] ||= []).push(p);
     if (p.hanja) (byHanja[p.hanja] ||= []).push(p);
   }
-  const declaredDistinct = (a, b) => (a.distinctFrom || []).includes(b.personId) || (b.distinctFrom || []).includes(a.personId);
+  // 같은 이름의 서로 다른 ID는 distinctFrom(동명이인 확정) 또는 possibleSameAs(동일인 여부 미확인)로 선언해야 한다.
+  const declaredDistinct = (a, b) => [...(a.distinctFrom || []), ...(a.possibleSameAs || [])].includes(b.personId)
+    || [...(b.distinctFrom || []), ...(b.possibleSameAs || [])].includes(a.personId);
   for (const [name, arr] of Object.entries(byName)) {
     for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
       if (!declaredDistinct(arr[i], arr[j])) E(`동일 인물 중복 의심: '${name}' → ${arr[i].personId}, ${arr[j].personId} (동명이인이면 distinctFrom 선언 필요)`);
@@ -82,6 +84,7 @@ export function validateData(data) {
   }
   const isPrimaryish = (id) => sourcesById[id] && sourcesById[id].sourceLevel !== "secondary";
   const isSeed = (id) => sourcesById[id] && sourcesById[id].verification === "seed_unverified";
+  const notAccessed = (id) => sourcesById[id] && sourcesById[id].verification === "not_accessed";
 
   /* ---------- 5. 인물 상태 ---------- */
   const statesByP = {};
@@ -116,7 +119,7 @@ export function validateData(data) {
     if (ev.recordDate < ev.eventDate) E(`${tag}: 기록일(${ev.recordDate})이 사건일(${ev.eventDate})보다 앞섬`);
     if (ev.datePrecision === "record_date_only" && ev.eventDate !== ev.recordDate) E(`${tag}: datePrecision=record_date_only인데 eventDate≠recordDate`);
     if (ev.datePrecision === "day" && ev.eventDate.endsWith("-00")) E(`${tag}: datePrecision=day인데 일(day)이 00`);
-    if (ev.datePrecision === "month" && !ev.eventDate.endsWith("-00")) E(`${tag}: datePrecision=month면 day를 00으로`);
+    if (ev.datePrecision === "month" && (!ev.eventDate.endsWith("-00") || ev.eventDate.endsWith("-00-00"))) E(`${tag}: datePrecision=month면 day만 00으로`);
     const datedSillok = ev.sourceIds.map((s) => sourcesById[s]).filter((s) => s && s.sourceType === "sillok" && s.date);
     if (datedSillok.length && !datedSillok.some((s) => s.date === ev.recordDate)) {
       E(`${tag}: recordDate(${ev.recordDate})가 어느 실록 사료 게재일(${datedSillok.map((s) => s.date).join(",")})과도 일치하지 않음 — eventDate/recordDate 혼동 의심`);
@@ -156,6 +159,10 @@ export function validateData(data) {
     (ev.placeIds || []).forEach((p) => placeIds.has(p) || E(`${tag}: placeId '${p}'가 PLACES에 없음`));
     if (!(ev.sourceIds || []).length) E(`${tag}: sourceIds 없음`);
     (ev.sourceIds || []).forEach((s) => sourceIds.has(s) || E(`${tag}: sourceId '${s}'가 SOURCES에 없음`));
+    (ev.sourceIds || []).forEach((s) => notAccessed(s) && E(`${tag}: 내용을 확인하지 못한 사료(${s})를 근거로 사용`));
+    if (ev.eventEndDate && (!isValidDate(ev.eventEndDate) || ev.eventEndDate < ev.eventDate)) E(`${tag}: eventEndDate 오류`);
+    if (ev.datePrecision === "year" && !ev.eventDate.endsWith("-00-00")) E(`${tag}: datePrecision=year면 'YYYY-00-00'`);
+    if (ev.verification && ev.sourceIds.length && ev.verification === "pack_v1" && !ev.sourceIds.some((s) => sourcesById[s] && sourcesById[s].verification === "pack_v1")) E(`${tag}: verification=pack_v1인데 pack_v1 사료가 없음`);
     (ev.discrepancies || []).forEach((d) => discIds.has(d) || E(`${tag}: discrepancy '${d}' 없음`));
     // 사료 수준과 certainty
     const evSrc = ev.sourceIds || [];
@@ -192,6 +199,8 @@ export function validateData(data) {
       rs.forEach((s) => sourceIds.has(s) || E(`${rt}: sourceId '${s}' 없음`));
       if (cert === "confirmed" && !rs.some(isPrimaryish)) E(`${rt}: confirmed 관계인데 1차/당대 사료가 없음`);
       if (cert === "confirmed" && rs.every(isSeed)) E(`${rt}: confirmed 관계인데 미검증 시드 사료만 있음`);
+      rs.forEach((s) => notAccessed(s) && E(`${rt}: 내용을 확인하지 못한 사료(${s})를 근거로 사용`));
+      if (r.verification && !VERIFICATION[r.verification]) E(`${rt}: verification '${r.verification}' 미정의`);
       if (rs.every((s) => !isPrimaryish(s)) && !NON_PRIMARY_OK.has(cert)) E(`${rt}: 2차자료만으로 '${cert}' 표시`);
     });
   }
@@ -212,7 +221,7 @@ export function validateData(data) {
   }
   PEOPLE.forEach((p) => usedP.has(p.personId) || W(`PEOPLE ${p.personId}: 어떤 사건에도 등장하지 않음`));
   PLACES.forEach((p) => usedPl.has(p.placeId) || PLACES.some((q) => q.parentPlaceId === p.placeId) || W(`PLACES ${p.placeId}: 사용되지 않음`));
-  SOURCES.forEach((s) => usedS.has(s.id) || s.sourceLevel === "secondary" || W(`SOURCES ${s.id}: 어떤 사건도 지지하지 않음`));
+  SOURCES.forEach((s) => usedS.has(s.id) || s.sourceLevel === "secondary" || s.verification === "not_accessed" || W(`SOURCES ${s.id}: 어떤 사건도 지지하지 않음`));
 
   return {
     errors, warnings,

@@ -25,7 +25,8 @@ export function deriveContacts(events, sourcesById) {
         sourceIds,
         sourceTypes: [...new Set(sourceIds.map((s) => sourcesById[s] && sourcesById[s].sourceType).filter(Boolean))],
         theater: ev.theater || [],
-        note: rel.note || ""
+        note: rel.note || "",
+        verification: rel.verification || ev.verification || "inherited_v2"
       });
     });
   }

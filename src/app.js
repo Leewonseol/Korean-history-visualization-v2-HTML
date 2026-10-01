@@ -37,7 +37,7 @@ const cursorDate = () => idx.events[state.cursor].eventDate;
 function period() { return { from: yearStart(state.f.yearFrom), to: yearEnd(state.f.yearTo) }; }
 function baseFilters() {
   const f = state.f;
-  return { layers: f.layers, levels: f.levels, theaters: f.theaters, certainties: f.certainties, sourceTypes: f.sourceTypes };
+  return { layers: f.layers, levels: f.levels, theaters: f.theaters, certainties: f.certainties, sourceTypes: f.sourceTypes, verifications: f.verifications };
 }
 function analysisWindow() {
   const p = period();
@@ -218,8 +218,8 @@ document.addEventListener("click", (e) => {
   ev.forEach((e) => (byVer[e.verification] = (byVer[e.verification] || 0) + 1));
   const empty = [];
   for (let y = yearOf(ev[0].eventDate); y <= yearOf(ev[ev.length - 1].eventDate); y++) if (!idx.years.includes(y)) empty.push(y);
-  $("coverageNote").innerHTML = `사건 ${ev.length}개 — 기존 데이터 이관 ${byVer.inherited_v2 || 0} · <span class="badge badge-unverified_seed">미검증</span> anchor 시드 ${byVer.seed_unverified || 0}.
-    아직 데이터에 사건이 없는 연도: ${empty.join(", ") || "없음"}. 1436~1449는 원문 조사 미완 구간입니다(research/chronology_1432_1449.md).`;
+  $("coverageNote").innerHTML = `사건 ${ev.length}개 — 검증 source pack v1 ${byVer.pack_v1 || 0} · v2 이관(원문 재대조 전) ${byVer.inherited_v2 || 0} · <span class="badge badge-unverified_seed">미검증</span> 시드 ${byVer.seed_unverified || 0}.
+    사건이 없는 연도: ${empty.join(", ") || "없음"}. 이 데이터는 1432~1449 전수 추출이 아니라 검증된 seed set입니다(research/chronology_1432_1449.md).`;
 })();
 
 update();

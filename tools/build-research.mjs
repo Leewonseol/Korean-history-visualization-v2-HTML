@@ -25,14 +25,19 @@ function replace(file, name, body) {
 /* ---------- chronology: 연도별 데이터셋 사건 ---------- */
 for (let y = 1432; y <= 1449; y++) {
   const evs = idx.events.filter((e) => yearOf(e.eventDate) === y);
-  const body = evs.length
+  const byV = {};
+  evs.forEach((e) => (byV[e.verification] = (byV[e.verification] || 0) + 1));
+  const status = evs.length
+    ? `- 조사 상태: 사건 ${evs.length}건 — ${Object.entries(byV).map(([k, n]) => `${VERIFICATION[k]} ${n}`).join(" · ")}. 월별 전수 조사는 아직 하지 않음.`
+    : "- 조사 상태: **데이터셋에 사건 없음.** pack v1에 이 연도 기사가 없고 월별 전수 조사도 하지 못했다 — '사건 없음'이 아니라 '미조사'.";
+  const body = status + "\n" + (evs.length
     ? evs.map((e) => {
         const actors = [...new Set([...e.actors, ...e.targets])].map(P).join(", ");
         const places = e.placeIds.map((p) => idx.placesById[p].canonicalName).join(", ") || "불명";
         const src = e.sourceIds.map((s) => `[${s}](${idx.sourcesById[s].url})`).join(", ");
         return `- **${e.eventDate}**${e.recordDate !== e.eventDate ? ` (기록 ${e.recordDate})` : ""} — ${md(e.title)} · \`${e.id}\` · ${CERTAINTY[e.certainty].badge} · ${VERIFICATION[e.verification]}\n  - 인물: ${actors}\n  - 장소: ${places} (${e.theater.map((t) => THEATERS[t].label).join(", ")})\n  - 사료: ${src}`;
       }).join("\n")
-    : "- (데이터셋에 이 연도의 사건 없음)";
+    : "");
   replace("chronology_1432_1449.md", `Y${y}`, body);
 }
 

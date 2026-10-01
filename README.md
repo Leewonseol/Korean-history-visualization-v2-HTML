@@ -6,10 +6,11 @@
 **temporal + multilevel + multilayer + spatial network**로 복원하는 정적 GitHub Pages 프로젝트입니다.
 중앙 정책결정 → 지휘 → 현장 실행 → 결과 → 보고(장계·치계·회계) → 새 정책결정의 흐름을 **시간 순서를 지키는 경로**로 추적합니다.
 
-> ⚠️ **데이터 범위 현황.** 이번 리팩토링 세션에서는 조선왕조실록·한국민족문화대백과·규장각 사이트 접속이 네트워크 정책으로 모두 차단되어
-> **새로 원문을 확인한 사건은 0건**입니다. 1432–1435 사건(29건)은 이전 v2 데이터셋(실록 기사 링크 포함)을 새 스키마로 이관·교정한 것이고,
-> anchor 시드 6건(1433-03-07, 1437-09-22, 1438-07-29, 1438-08-08, 1439-05-10, 1449-07-07)은 사용자가 제시한 anchor 기사 설명만으로 만든 **미검증 시드**입니다.
-> 1436, 1440–1448은 "사건이 없다"가 아니라 "아직 조사하지 못했다"입니다. 자세한 내용: [`research/chronology_1432_1449.md`](research/chronology_1432_1449.md).
+> **데이터 근거 현황.** 사건 70건 = 사용자가 실록 원문과 대조한 **VALIDATED HISTORICAL SOURCE PACK v1** 기반 54건
+> (실록 기사 기반 51 + 『세종실록』 지리지 연 단위 3) · 이전 v2 데이터 이관(원문 재대조 전) 15건 · 미검증 시드 1건.
+> 이것은 **검증된 seed set이지 1432~1449 전수 추출이 아닙니다.** 1444년은 사건이 없으나 '미조사'입니다.
+> 작업 환경에서는 실록·한국민족문화대백과·규장각 사이트가 네트워크 정책으로 차단되어 있어, 이 저장소의 작업 세션이 원문을 직접 열람한 적은 없습니다.
+> 연도별 상태: [`research/chronology_1432_1449.md`](research/chronology_1432_1449.md).
 
 ## 실행
 
@@ -80,13 +81,14 @@ tools/  validate.mjs  test.mjs  e2e.mjs  build-research.mjs
 - 각 EVENT의 Lasswell 필드: `actors/targets/decisionMakers/informationSources/beneficiaries/victims`(WHO), `what[]`(GETS/LOSES WHAT),
   `eventDate/recordDate/datePrecision`(WHEN), `mechanisms/documentType/embeddedDocumentAuthor`(HOW), `theater/placeIds/locationNote`(WHERE),
   `outcomes[]`(OUTCOME). 비어 있으면 `validateData()`가 오류를 냅니다.
-- **LEVEL**(행위자 위치, L0 왕 ~ L7 외부 행위자)은 노드의 시간 가변 속성이고, **LAYER**(관계 종류 19개)는 edge 속성입니다.
+- **LEVEL**(행위자 위치, L0 왕 ~ L7 외부 행위자, LU 미상)은 노드의 시간 가변 속성이고, **LAYER**(관계 종류 20개: 요구된 19개 + 부역·노동 동원)는 edge 속성입니다.
+- 근거 등급(`verification`)은 사건과 관계 단위로 모두 기록합니다. pack v1 사건 안의 v2 전용 관계는 따로 표시됩니다.
 - 실록 기사 안에 인용된 김종서의 장계·치계·회계는 `embeddedDocumentAuthor` + `documentType`으로 분리 저장합니다.
 - 인과는 `causedBy[]`의 `causalStatus`(explicit / strongly_implied / sequence_only / unknown)로만 기록하며, 시간 선후만으로 만들지 않습니다.
 
 ## 화면
 
-- **왼쪽**: 기간(연도, 타임라인 커서까지 제한, 누적/최근 12개월/현재 사건만) · level · layer · theater(중앙/압록강/두만강/명/불명) · certainty · 사료 유형 · 노드 크기 지표 · 장소 노드 overlay · 범례
+- **왼쪽**: 기간(연도, 타임라인 커서까지 제한, 누적/최근 12개월/현재 사건만) · level · layer · theater(중앙/압록강/두만강/명/불명) · certainty · **근거 등급(pack v1 / v2 이관 / 시드)** · 사료 유형 · 노드 크기 지표 · 장소 노드 overlay · 범례
 - **가운데**: level band 배치 네트워크(위→아래: 왕, 중앙 관료, 중앙 군사, 지방 최고지휘, 현장 지휘, 군졸, 주민; 외부 세력은 오른쪽 세력별 열),
   사건 분포 strip, 슬라이더, 재생/일시정지, 이전·다음, **EVENTS에서 자동 생성되는 연도 jump**
 - **오른쪽 탭**: [사건] Lasswell 6요소·관계·인과·사료 링크·certainty·discrepancy / [인물] 시점별 관직·level, 활동기간, 서사 판단용 지표, 연도별 trajectory, 사건·관계·장소·사료 / [분석] temporal metrics 표, trajectory, layer별 중심성, **Temporal Path**, 피드백 루프
@@ -118,10 +120,10 @@ time-respecting path: τ₁ ≤ τ₂ ≤ … ≤ τ_k (같은 날 연쇄 허용
 - 4군·6진을 파저강 정벌 하나의 직접 결과로 단순화하지 않으며(자성군 설치 인과 = `sequence_only`), 1449년을 북방 문제 해결 시점으로 묘사하지 않습니다.
 - confirmed 관계가 1차 사료 없이 만들어지면 `validateData()`가 막습니다.
 
-## 다음 단계 (원문 접근이 가능한 환경에서)
+## 다음 단계
 
-1. 세종실록 월별 기사목록(세종 14년 12월 ~ 31년 7월)을 연도별로 전수 조사하고 `research/chronology_1432_1449.md`의 '검증 대기 질문'을 처리
-2. 1432–1435 이관 사건을 원문과 대조해 `verification: "text_checked"`로 올리고, 미기입 수치(1433 전과·사상자)를 '조선 측 보고 수치'로 입력
-3. anchor 시드 6건의 원문을 읽어 relation·인물·장소를 채우고 certainty를 갱신
-4. 규장각에서 『서정록』 소장본·원문 확인 후 실록과 사건 단위 대조(`discrepancies.md`)
-5. 김종서 장계·치계·회계 인용 구간을 전수 추출해 REPORT layer corpus 확장
+1. 세종실록 월별 기사목록(세종 14년 12월 ~ 31년 7월)을 연도별로 전수 조사(현재는 seed set). 특히 1444년과 각 연도의 '남은 확인 과제'
+2. v2 이관 15건을 원문과 대조해 `pack_v1` 수준으로 올리거나 수정(성죄방목, 1434 이만주 교섭, 1435 정월 침입·문책 등)
+3. 1433 정벌 부대별 전과 수치를 '조선 측 보고 수치'로 입력
+4. 『서정록』 원문 또는 1989 역본 확보 후 실록과 사건 단위 대조(`discrepancies.md` D08)
+5. 김종서 장계·치계·회계의 인용 본문 구간 추출, REPORT layer corpus 확장

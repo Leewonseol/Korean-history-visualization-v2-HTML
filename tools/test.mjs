@@ -7,6 +7,7 @@ import { buildIndexes } from "../src/model/indexes.js";
 import { filterContacts } from "../src/model/temporalNetwork.js";
 import { temporalPath, isTimeRespecting, feedbackLoops, buildAdjacency, earliestArrival } from "../src/analysis/temporalPaths.js";
 import { computeMetrics, dynamicCommunicability } from "../src/analysis/centrality.js";
+import { toArcs } from "../src/model/deriveEdges.js";
 import { yearlyTrajectories } from "../src/analysis/trajectories.js";
 
 let passed = 0;
@@ -91,11 +92,11 @@ test("실제 데이터: 모든 earliest-arrival 경로가 시간 순행이며 br
     let changed = true;
     while (changed) {
       changed = false;
-      for (const c of cs) {
-        const au = bf.get(c.source);
-        if (au !== undefined && au <= c.endDate) {
-          const t = au > c.startDate ? au : c.startDate;
-          if (!bf.has(c.target) || t < bf.get(c.target)) { bf.set(c.target, t); changed = true; }
+      for (const a of toArcs(cs)) {                 // undirected 관계는 양방향 arc
+        const au = bf.get(a.u);
+        if (au !== undefined && au <= a.end) {
+          const t = au > a.start ? au : a.start;
+          if (!bf.has(a.v) || t < bf.get(a.v)) { bf.set(a.v, t); changed = true; }
         }
       }
     }

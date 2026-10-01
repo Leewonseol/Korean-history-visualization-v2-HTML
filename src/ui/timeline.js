@@ -33,7 +33,7 @@ export function createTimeline(idx, state, setCursor) {
   let strip = "";
   for (let y = y0; y <= y1; y++) strip += `<span class="strip-year" style="left:${pct(`${y}-01-01`)}%">${String(y).slice(2)}</span>`;
   ev.forEach((e, i) => {
-    strip += `<button type="button" class="strip-tick c-${e.certainty}" data-i="${i}" style="left:${pct(e.eventDate)}%" title="${e.eventDate} ${e.title.replace(/"/g, "'")} (${CERTAINTY[e.certainty].badge})"></button>`;
+    strip += `<button type="button" class="strip-tick c-${e.certainty} v-${e.verification}" data-i="${i}" style="left:${pct(e.eventDate)}%" title="${e.eventDate} ${e.title.replace(/"/g, "'")} (${CERTAINTY[e.certainty].badge})"></button>`;
   });
   strip += `<span class="strip-cursor" id="stripCursor"></span>`;
   $("eventStrip").innerHTML = strip;
@@ -60,7 +60,8 @@ export function createTimeline(idx, state, setCursor) {
   function render(passesFilter) {
     const e = ev[state.cursor];
     slider.value = state.cursor;
-    $("currentDate").textContent = e.eventDate === e.recordDate ? formatDate(e.eventDate) : `${formatDate(e.eventDate)} (기록 ${formatDate(e.recordDate)})`;
+    const span = e.eventEndDate ? `${formatDate(e.eventDate)}~${formatDate(e.eventEndDate)}` : formatDate(e.eventDate);
+    $("currentDate").textContent = e.eventDate === e.recordDate ? span : `${span} (기록 ${formatDate(e.recordDate)})`;
     $("currentEventTitle").textContent = e.title;
     $("currentCounter").textContent = `${state.cursor + 1} / ${ev.length}`;
     $("stripCursor").style.left = `${pct(e.eventDate)}%`;

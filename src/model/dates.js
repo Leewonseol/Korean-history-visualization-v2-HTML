@@ -11,6 +11,7 @@ export function parseDate(s) {
   const m = RE.exec(s || "");
   if (!m) return null;
   const y = +m[1], mo = +m[2], d = +m[4];
+  if (mo === 0 && d === 0 && !m[3]) return { y, m: 0, leap: false, d: 0 }; // 연 단위 정밀도 'YYYY-00-00'
   if (mo < 1 || mo > 12 || d < 0 || d > 30) return null;
   return { y, m: mo, leap: m[3] === "L", d };
 }
@@ -49,6 +50,7 @@ export function shiftMonths(s, n) {
 export function formatDate(s) {
   const p = parseDate(s);
   if (!p) return s || "—";
+  if (p.m === 0) return `${p.y}년(월일 미상)`;
   const mm = `${p.leap ? "윤" : ""}${p.m}월`;
   return p.d === 0 ? `${p.y}년 ${mm}(일 미상)` : `${p.y}년 ${mm} ${p.d}일`;
 }

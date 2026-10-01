@@ -10,7 +10,7 @@ const ROLE_LABELS = {
   beneficiaries: "수혜자", victims: "피해자", subjects: "언급 대상(관계 아님)"
 };
 const WHAT_LABELS = { gain: "획득", loss: "상실", burden: "부담", transfer: "전달", recover: "탈환", claim: "요구·주장" };
-const PRECISION = { day: "일 단위", record_date_only: "사건일 미상 → 기사 게재일", month: "월 단위", unknown: "미상" };
+const PRECISION = { day: "일 단위", record_date_only: "사건일 미상 → 기사 게재일", month: "월 단위", year: "연 단위(지리지 등)", unknown: "미상" };
 
 export function renderEventPanel(el, idx, ev, data) {
   const d = ev.eventDate;
@@ -51,7 +51,7 @@ export function renderEventPanel(el, idx, ev, data) {
     <ul class="plain">${what}</ul>
 
     <h4 class="lw">WHEN</h4>
-    <div class="kv"><span class="k">사건일</span><span class="v">${formatDate(ev.eventDate)} <small class="muted">(${PRECISION[ev.datePrecision] || esc(ev.datePrecision)})</small></span></div>
+    <div class="kv"><span class="k">사건일</span><span class="v">${formatDate(ev.eventDate)}${ev.eventEndDate ? ` ~ ${formatDate(ev.eventEndDate)}` : ""} <small class="muted">(${PRECISION[ev.datePrecision] || esc(ev.datePrecision)})</small></span></div>
     ${ev.recordDate !== ev.eventDate ? `<div class="kv"><span class="k">기록일</span><span class="v">${formatDate(ev.recordDate)} <small class="muted">실록 게재일 — 사건일과 다름</small></span></div>` : ""}
 
     <h4 class="lw">HOW <small>메커니즘</small></h4>

@@ -13,9 +13,10 @@ export const LEVELS = {
   L4: { label: "L4 현장 지휘관·군관·지방관", short: "현장 지휘" },
   L5: { label: "L5 군졸", short: "군졸" },
   L6: { label: "L6 지방 주민", short: "주민" },
-  L7: { label: "L7 외부 정치·군사 행위자", short: "외부 행위자" }
+  L7: { label: "L7 외부 정치·군사 행위자", short: "외부 행위자" },
+  LU: { label: "LU 소속·위치 미상", short: "미상" }
 };
-export const LEVEL_ORDER = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7"];
+export const LEVEL_ORDER = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "LU"];
 
 // 같은 의미의 관계를 이름만 바꿔 중복 생성하지 않는다. 세부 행위는 relationType으로 구분한다.
 export const LAYERS = {
@@ -37,6 +38,7 @@ export const LAYERS = {
   FORTIFICATION:         { label: "축성·진보 설치·방비",       color: "#7b5e3b" },
   RESETTLEMENT:          { label: "사민·입거·이주",            color: "#97842a" },
   BORDER_ADMINISTRATION: { label: "변경 행정(군현·진 설치)",   color: "#4a5568" },
+  LABOR_MOBILIZATION:    { label: "부역·노동 동원",            color: "#a0522d" },
   COOPERATION:           { label: "협력",                      color: "#38a169" }
 };
 
@@ -78,8 +80,11 @@ export const AFFILIATIONS = {
   JIANZHOU_LEFT:   { label: "건주좌위 계열",               color: "#7f4aa8" },
   HOLLAON:         { label: "홀라온(올적합)",              color: "#5e6b1f" },
   ORYANGHAP:       { label: "오량합",                      color: "#8a7a14" },
+  ODORI:           { label: "오도리",                      color: "#9b5fc0" },
+  UDIGE:           { label: "우디거(세부 집단 미특정)",    color: "#4d7c0f" },
   JURCHEN_UNSPEC:  { label: "여진(세력 미특정)",           color: "#8c6d62" },
-  MING:            { label: "명",                          color: "#b7871b" }
+  MING:            { label: "명",                          color: "#b7871b" },
+  UNKNOWN:         { label: "소속 미상",                   color: "#a0a4aa" }
 };
 
 export const ENTITY_TYPES = {
@@ -94,13 +99,15 @@ export const MECHANISMS = {
   diplomacy: "외교", envoy: "사신·사절", fortification: "축성·방비", resettlement: "사민·이주",
   reward: "포상", punishment: "처벌", welfare: "예우·조휼", investigation: "조사",
   proclamation: "공표", intelligence: "제보·정보", appointment: "임명", claim: "주장",
-  accusation: "문죄", administrative_reorganization: "행정개편", mediation: "중재", defection: "투화·이탈"
+  accusation: "문죄", administrative_reorganization: "행정개편", mediation: "중재", defection: "투화·이탈",
+  relief: "구휼", labor_mobilization: "부역 동원", signal: "봉수·신호", self_report: "자기 변론"
 };
 
 export const OUTCOME_TYPES = {
   killed: "전사·피살", wounded: "부상", captured: "피랍·포로", recovered: "탈환·송환", victory: "승전",
   defeat: "패전", withdrawal: "철수", policy_change: "정책 변경", decision: "결정", fortification: "방비 강화·축성",
   county_established: "군현 설치", garrison_established: "진 설치", movement: "이동", reward: "포상",
+  relief: "구휼", labor: "부역 동원", attributed_failure: "책임 귀속(사료 서술)", reported_claim: "자기 보고·주장",
   punishment: "처벌", welfare: "예우·보상", proclamation: "공표", appointment: "임명", report_filed: "보고",
   diplomatic_exchange: "외교 교환", claim_made: "주장 제기", investigation: "조사", unresolved: "미해결"
 };
@@ -119,13 +126,14 @@ export const SOURCE_LEVELS = {
 
 // 문서 유형: 실록 기사 안에 인용된 보고문(embedded document)의 종류
 export const DOCUMENT_TYPES = {
-  janggye: "장계", chigye: "치계", hoegye: "회계", sangeon: "상언", gyemun: "계문", article: "실록 기사(편찬자 서술)"
+  janggye: "장계", chigye: "치계", hoegye: "회계", sangeon: "상언", gyemun: "계문", article: "실록 기사(편찬자 서술)", geography: "지리지"
 };
 
 // 검증 상태: 이 세션에서 원문을 다시 읽었는가
 export const VERIFICATION = {
   text_checked:   "원문 대조 완료",
   inherited_v2:   "v2 데이터셋에서 이관(기사 링크 있음, 이번 작업에서 원문 재대조 못함)",
+  pack_v1:        "사용자 수동 검증 source pack v1(실록 원문 대조됨 · 이 세션 직접 열람 아님)",
   seed_unverified:"사용자 제시 anchor 기사(내용 미확인)",
   not_accessed:   "접근 불가로 내용 미확인(근거로 사용하지 않음)"
 };

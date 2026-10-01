@@ -1,86 +1,139 @@
 /* ==========================================================================
    SOURCES — 모든 EVENT와 RELATION은 여기의 id를 sourceIds로 참조한다.
-   date: 실록 기사 게재일(음력, 'YYYY-MM-DD', 윤달은 'YYYY-MML-DD').
-   verification: 이번 작업 세션에서 원문을 다시 대조했는지(vocab.VERIFICATION).
-   accessNote: 접근 가능 여부 기록. (이번 세션 환경에서는 sillok.history.go.kr,
-               encykorea.aks.ac.kr, kyu.snu.ac.kr 접속이 네트워크 정책으로 차단되었다.)
+   date: 실록 기사 게재일(음력, 'YYYY-MM-DD', 윤달은 'YYYY-MML-DD'). 지리지는 null.
+   verification (vocab.VERIFICATION):
+     pack_v1         사용자가 실록 원문과 수동 대조한 "VALIDATED HISTORICAL SOURCE PACK v1"에 수록
+     inherited_v2    v2 데이터셋에서 이관(기사 링크만 있고 원문 재대조 없음)
+     seed_unverified 사용자 제시 anchor였으나 pack v1에도 내용이 없음
+     not_accessed    접근 불가 — 사건 근거로 사용 금지(validateData가 차단)
+   이 작업 환경에서는 sillok/encykorea/kyu 사이트가 네트워크 정책으로 차단되어
+   어떤 기사도 이 세션에서 직접 열람하지 못했다. pack_v1 내용은 사용자 검증에 근거한다.
    ========================================================================== */
 
 const SILLOK = "https://sillok.history.go.kr/id/";
 
 function sillok(id, date, title, articleId, extra = {}) {
   return {
-    id,
-    sourceType: "sillok",
-    sourceLevel: "primary",
-    title,
-    date,
-    url: SILLOK + articleId,
-    articleId,
-    authorOrReporter: null,
-    documentType: "article",
-    note: "",
-    verification: "inherited_v2",
-    ...extra
+    id, sourceType: "sillok", sourceLevel: "primary", title, date,
+    url: SILLOK + articleId, articleId, authorOrReporter: null, documentType: "article",
+    note: "", verification: "inherited_v2", ...extra
   };
 }
+const P = (extra = {}) => ({ verification: "pack_v1", ...extra });
 
 export const SOURCES = [
-  /* ---------- v2 데이터셋에서 이관한 세종실록 기사(1432~1435) ---------- */
-  sillok("SRC_1432_1209", "1432-12-09", "세종실록 14년 12월 9일 — 여연 침입·박초 추격·홍사석 파견", "wda_11412009_003"),
-  sillok("SRC_1432_1221", "1432-12-21", "세종실록 14년 12월 21일 — 이만주 측 해명·유을합 포로 송환", "kda_11412021_003"),
-  sillok("SRC_1433_0215", "1433-02-15", "세종실록 15년 2월 15일 — 파저강 대응 비밀 의견 수렴", "kda_11502015_002"),
-  sillok("SRC_1433_0226", "1433-02-26", "세종실록 15년 2월 26일 — 파저강 정벌 지휘체계", "kda_11502026_004"),
+  /* ---------------- 1432 ---------------- */
+  sillok("SRC_1432_1209", "1432-12-09", "세종실록 14년 12월 9일 — 여연 침입·박초 추격(평안도 감사 보고)", "wda_11412009_003",
+    P({ authorOrReporter: "평안도 감사(실명 미기재)" })),
+  sillok("SRC_1432_1211", "1432-12-11", "세종실록 14년 12월 11일 — 여연 침입 직후 화포·성책·방어 논의", "kda_11412011_004", P()),
+  sillok("SRC_1432_1221", "1432-12-21", "세종실록 14년 12월 21일 — 이만주 측 주장·유을합 포로 송환·조정 책임 논의", "kda_11412021_003", P()),
+  /* ---------------- 1433 ---------------- */
+  sillok("SRC_1433_0215", "1433-02-15", "세종실록 15년 2월 15일 — 파저강 처리 비밀 의견 수렴", "kda_11502015_002", P()),
+  sillok("SRC_1433_0226", "1433-02-26", "세종실록 15년 2월 26일 — 파저강 정벌 지휘체계 논의", "kda_11502026_004", P()),
+  sillok("SRC_1433_0307", "1433-03-07", "세종실록 15년 3월 7일 — 최윤덕(최치운 편) 병력 3,000 부족·1만 이상 건의", "wda_11503007_001",
+    P({ authorOrReporter: "최윤덕(최치운을 통해 전달)" })),
   sillok("SRC_1433_0310", "1433-03-10", "세종실록 15년 3월 10일 — 성죄방목", "kda_11503010_005"),
-  sillok("SRC_1433_0325", "1433-03-25", "세종실록 15년 3월 25일 — 맹가첩목아 관련 비밀 지시", "wda_11503025_002"),
-  sillok("SRC_1433_0507", "1433-05-07", "세종실록 15년 5월 7일 — 제1차 파저강 정벌 보고(4/10 집결, 4/19 공격 포함)", "kda_11505007_002",
-    { authorOrReporter: "최윤덕(평안도 도절제사)", documentType: "article",
-      note: "v2 요약에 따르면 최윤덕의 전과·사상자·군령위반 보고가 실려 있다. 보고문 유형(치계/장계)은 원문 재대조 필요." }),
+  sillok("SRC_1433_0325", "1433-03-25", "세종실록 15년 3월 25일 — 맹가첩목아 가담 여부에 따른 조건부 지시", "wda_11503025_002", P()),
+  sillok("SRC_1433_0507", "1433-05-07", "세종실록 15년 5월 7일 — 제1차 파저강 정벌 보고(최윤덕, 박호문 편)", "kda_11505007_002",
+    P({ authorOrReporter: "최윤덕(박호문을 통해 보고)" })),
   sillok("SRC_1433_0511", "1433-05-11", "세종실록 15년 5월 11일 — 정벌 이유 중외 포고 건의", "kda_11505011_004"),
-  sillok("SRC_1433_0517", "1433-05-17", "세종실록 15년 5월 17일 — 파저강 전사·병사자 보상", "kda_11505017_002"),
+  sillok("SRC_1433_0516A", "1433-05-16", "세종실록 15년 5월 16일 — 정벌 공로에 따른 관직 제수", "kda_11505016_003", P()),
+  sillok("SRC_1433_0516B", "1433-05-16", "세종실록 15년 5월 16일 — 정벌 지휘관에게 노비 하사", "kda_11505016_004", P()),
+  sillok("SRC_1433_0517", "1433-05-17", "세종실록 15년 5월 17일 — 전사·병사자 치제와 구휼·복호", "kda_11505017_002", P()),
   sillok("SRC_1433_0601", "1433-06-01", "세종실록 15년 6월 1일 — 자성군 설치", "kda_11506001_003"),
-  sillok("SRC_1433_0610", "1433-06-10", "세종실록 15년 6월 10일 — 맹가첩목아가 지함에게 한 진술", "wda_11506010_002"),
-  sillok("SRC_1433_08L10", "1433-08L-10", "세종실록 15년 윤8월 10일 — 명 칙서(상호 반환·침범 중지)", "wda_11508110_001"),
+  sillok("SRC_1433_0610", "1433-06-10", "세종실록 15년 6월 10일 — 지함 복명: 맹가첩목아의 진술", "wda_11506010_002",
+    P({ authorOrReporter: "지함(복명)" })),
+  sillok("SRC_1433_08L10", "1433-08L-10", "세종실록 15년 윤8월 10일 — 명 선덕제 칙서(진위 불명, 상호 반환·침범 금지)", "wda_11508110_001", P()),
   sillok("SRC_1433_1221", "1433-12-21", "세종실록 15년 12월 21일 — 이만주 사절(왕답올·유살독 등)", "kda_11512021_002"),
+  /* ---------------- 1434 ---------------- */
   sillok("SRC_1434_0416", "1434-04-16", "세종실록 16년 4월 16일 — 이만주가 강계부에 보낸 문서", "kda_11604016_003"),
   sillok("SRC_1434_0422", "1434-04-22", "세종실록 16년 4월 22일 — 도망자 송환 논의", "kda_11604022_001"),
   sillok("SRC_1434_0426", "1434-04-26", "세종실록 16년 4월 26일 — 이만주 관하 인원 이탈", "kda_11604026_006"),
+  sillok("SRC_1434_0803", "1434-08-03", "세종실록 16년 8월 3일 — 범찰 첩보·회령 지휘 논의", "kda_11608003_001", P()),
   sillok("SRC_1434_0914", "1434-09-14", "세종실록 16년 9월 14일 — 자성군 방비 강화", "kda_11609014_001"),
   sillok("SRC_1434_1010", "1434-10-10", "세종실록 16년 10월 10일 — 부방군 교대체계·병마 편제 감독", "kda_11610010_005"),
   sillok("SRC_1434_1012", "1434-10-12", "세종실록 16년 10월 12일 — 명의 홀라온 억류 포로 송환 중재", "wda_11610012_001"),
-  sillok("SRC_1435_0118", "1435-01-18", "세종실록 17년 1월 18일 — 1월 13일 오량합 여연성 포위 보고", "wda_11701018_002"),
+  sillok("SRC_1434_1024", "1434-10-24", "세종실록 16년 10월 24일 — 영북·회령 행정·방어 재편", "kda_11610024_005", P()),
+  /* ---------------- 1435 ---------------- */
+  sillok("SRC_1435_0118", "1435-01-18", "세종실록 17년 1월 18일 — 1월 13일 오량합 2,700기 여연성 포위", "wda_11701018_002", P()),
   sillok("SRC_1435_0125", "1435-01-25", "세종실록 17년 1월 25일 — 여연 방어구조 개편 검토", "kda_11701025_001"),
   sillok("SRC_1435_0224", "1435-02-24", "세종실록 17년 2월 24일 — 범찰 이주 허가(명)", "wda_11702024_001"),
+  sillok("SRC_1435_0312", "1435-03-12", "세종실록 17년 3월 12일 — 신 입거민 가축 피해 구휼", "kda_11703012_005", P()),
+  sillok("SRC_1435_0408", "1435-04-08", "세종실록 17년 4월 8일 — 함길도 입거민 생계·정착 보고", "kda_11704008_004", P()),
   sillok("SRC_1435_0613", "1435-06-13", "세종실록 17년 6월 13일 — 정월 미보고 침입 발각·김윤수 문책", "kda_11706013_003"),
   sillok("SRC_1435_0617", "1435-06-17", "세종실록 17년 6월 17일 — 사헌부의 김윤수 처분 강화 요구", "kda_11706017_004"),
-  sillok("SRC_1435_0918", "1435-09-18", "세종실록 17년 9월 18일 — 여연 추격 공로 포상·전사자 예우", "wda_11709018_003"),
-
-  /* ---------- 사용자 제시 anchor 기사(이번 세션에서 원문 접근 불가 → 시드) ---------- */
-  sillok("SRC_1433_0307", "1433-03-07", "세종실록 15년 3월 7일 — 최윤덕의 병력·진격로 건의(anchor)", "wda_11503007_001",
-    { verification: "seed_unverified", authorOrReporter: "최윤덕", note: "사용자 제시 anchor. 내용 미대조." }),
-  sillok("SRC_1437_0922", "1437-09-22", "세종실록 19년 9월 22일 — 이천의 제2차 파저강 정벌(anchor)", "wda_11909022_001",
-    { verification: "seed_unverified", authorOrReporter: "이천(추정, 원문 미확인)", note: "사용자 제시 anchor. 전과·병력 수치는 원문 대조 전까지 입력하지 않음." }),
-  sillok("SRC_1438_0729", "1438-07-29", "세종실록 20년 7월 29일 — 김종서의 범찰·동창 관련 회계(anchor)", "wda_12007029_003",
-    { verification: "seed_unverified", authorOrReporter: "김종서", documentType: "hoegye", note: "사용자 제시 anchor. embedded document 범위 미추출." }),
+  sillok("SRC_1435_0719", "1435-07-19", "세종실록 17년 7월 19일 — 회령·경원 호구 분할로 종성·공성 설치", "kda_11707019_002", P()),
+  sillok("SRC_1435_0726", "1435-07-26", "세종실록 17년 7월 26일 — 입거 선정 부정·도피에 대한 처벌", "wda_11707026_004", P()),
+  sillok("SRC_1435_0918", "1435-09-18", "세종실록 17년 9월 18일 — 여연 전투 후 포상·처벌·전사자 예우", "kda_11709018_003", P()),
+  /* ---------------- 1436 ---------------- */
+  sillok("SRC_1436_06L19", "1436-06L-19", "세종실록 18년 윤6월 19일 — 방어 건의를 모아 이천에게 보냄", "kda_11806119_002", P()),
+  sillok("SRC_1436_1101", "1436-11-01", "세종실록 18년 11월 1일 — 김종서·정흠지의 4군 방어 계책", "kda_11811001_005", P()),
+  sillok("SRC_1436_1127", "1436-11-27", "세종실록 18년 11월 27일 — 이징옥 유시·4군 방어책 시행·화포 교습", "kda_11811027_001", P()),
+  /* ---------------- 1437 ---------------- */
+  sillok("SRC_1437_0611", "1437-06-11", "세종실록 19년 6월 11일 — 이천의 자책과 정벌 3책", "wda_11906011_002", P({ authorOrReporter: "이천" })),
+  sillok("SRC_1437_0820", "1437-08-20", "세종실록 19년 8월 20일 — 최윤덕의 방비 방안을 함길도 도절제사에 전달", "kda_11908020_001", P()),
+  sillok("SRC_1437_0914", "1437-09-14", "세종실록 19년 9월 14일 — 이천 군 3로 분진·압록강 도하(9/7 출발)", "kda_11909014_003", P()),
+  sillok("SRC_1437_0922", "1437-09-22", "세종실록 19년 9월 22일 — 제2차 파저강 정벌 승첩 보고", "wda_11909022_001", P()),
+  /* ---------------- 1438 ~ 1439 ---------------- */
+  sillok("SRC_1438_0729", "1438-07-29", "세종실록 20년 7월 29일 — 범찰·동창에 대한 김종서의 회계", "wda_12007029_003",
+    P({ authorOrReporter: "김종서", documentType: "hoegye" })),
   sillok("SRC_1438_0808", "1438-08-08", "세종실록 20년 8월 8일 — 김종서 장계가 인용된 여진 정책 기사(anchor)", "wda_12008008_003",
-    { verification: "seed_unverified", authorOrReporter: "김종서", documentType: "janggye", note: "사용자 제시 anchor. 인용 범위 미추출." }),
-  sillok("SRC_1439_0510", "1439-05-10", "세종실록 21년 5월 10일 — 김종서의 거을가개 관련 치계(anchor)", "kda_12105010_001",
-    { verification: "seed_unverified", authorOrReporter: "김종서", documentType: "chigye", note: "사용자 제시 anchor. '거을가개'가 인명인지 지명인지 미확인." }),
-  sillok("SRC_1449_0707", "1449-07-07", "세종실록 31년 7월 7일 — 부거현을 부령도호부로 승격, 진 설치(anchor)", "kda_13107007_003",
-    { verification: "seed_unverified", note: "사용자 제시 anchor. 작업상 종점." }),
+    { verification: "seed_unverified", authorOrReporter: "김종서", documentType: "janggye", note: "최초 anchor 목록에 있었으나 pack v1에는 수록되지 않음." }),
+  sillok("SRC_1439_0510", "1439-05-10", "세종실록 21년 5월 10일 — 거을가개 사망 헛소문에 대한 김종서 치계", "kda_12105010_001",
+    P({ authorOrReporter: "김종서", documentType: "chigye" })),
+  sillok("SRC_1439_0617", "1439-06-17", "세종실록 21년 6월 17일 — 여진 정보원들의 침입 계획 제보", "kda_12106017_002", P()),
+  /* ---------------- 1440 ~ 1442 ---------------- */
+  sillok("SRC_1440_0117", "1440-01-17", "세종실록 22년 1월 17일 — 김종서의 북방 경영 자기 변론", "kda_12201017_001", P({ authorOrReporter: "김종서" })),
+  sillok("SRC_1440_0407", "1440-04-07", "세종실록 22년 4월 7일 — 동창·범찰 무리의 동요와 김종서의 대응", "kda_12204007_001", P({ authorOrReporter: "김종서" })),
+  sillok("SRC_1440_1126", "1440-11-26", "세종실록 22년 11월 26일 — 함길도 진보 이설·신설 소요 병력", "kda_12211026_005", P()),
+  sillok("SRC_1441_0129", "1441-01-29", "세종실록 23년 1월 29일 — 황보인 파견, 동북 진보 재편", "kda_12301029_002", P()),
+  sillok("SRC_1441_0519", "1441-05-19", "세종실록 23년 5월 19일 — 건원보를 아산으로 이설", "kda_12305019_002", P()),
+  sillok("SRC_1442_1022", "1442-10-22", "세종실록 24년 10월 22일 — 침입 경보·무단 도강 금지", "kda_12410022_001", P()),
+  /* ---------------- 1443 ~ 1449 ---------------- */
+  { ...sillok("SRC_1443_1005", "1443-10-05", "세종실록 25년 10월 5일 — 배마라가·창고리 제보로 우디거 1,000여 기 방어", "kda_12510005_001", P()),
+    url: "https://sillok.history.go.kr/popup/print.do?gubun=kor&id=kda_12510005_001" },
+  sillok("SRC_1443_1023", "1443-10-23", "세종실록 25년 10월 23일 — 동소로가무의 합공 제안과 조정의 제한적 수용", "kda_12510023_003", P()),
+  sillok("SRC_1445_0519", "1445-05-19", "세종실록 27년 5월 19일 — 황보인의 연대·봉수 개선안", "kda_12705019_002", P()),
+  sillok("SRC_1445_0806", "1445-08-06", "세종실록 27년 8월 6일 — 변방 방비 해이 경계", "kda_12708006_002", P()),
+  sillok("SRC_1445_1027", "1445-10-27", "세종실록 27년 10월 27일 — 남은 오도리 처우 지시", "kda_12710027_001", P()),
+  sillok("SRC_1446_0420", "1446-04-20", "세종실록 28년 4월 20일 — 무창 피습과 군령·봉수 해이", "wda_12804020_005", P()),
+  sillok("SRC_1447_0107", "1447-01-07", "세종실록 29년 1월 7일 — 평안도 행성 축조(공사 2/15~3/15)", "kda_12901007_001", P()),
+  sillok("SRC_1447_04L10", "1447-04L-10", "세종실록 29년 윤4월 10일 — 황보인의 서북·동북 변경 재편 보고", "kda_12904110_001", P({ authorOrReporter: "황보인" })),
+  sillok("SRC_1447_0708", "1447-07-08", "세종실록 29년 7월 8일 — 함길도 회령·삼수 대규모 축성", "wda_12907008_002", P()),
+  sillok("SRC_1448_0307", "1448-03-07", "세종실록 30년 3월 7일 — 장성 vs 읍성 우선순위 논의", "kda_13003007_001", P()),
+  sillok("SRC_1449_0707", "1449-07-07", "세종실록 31년 7월 7일 — 부거현을 석보로 옮겨 부령도호부·진 설치, 삭천→삭주", "kda_13107007_003", P()),
 
-  /* ---------- 2차 참고자료 / 서정록 ---------- */
+  /* ---------------- 『세종실록』 지리지 (당대 편찬, 연 단위 서술) ---------------- */
+  { id: "SRC_GEO_HOERYEONG", sourceType: "sillok", sourceLevel: "contemporary_compilation", title: "세종실록 지리지 — 회령도호부",
+    date: null, url: "https://sillok.history.go.kr/popup/viewer.do?id=kda_40011006", articleId: "kda_40011006",
+    authorOrReporter: null, documentType: "geography", verification: "pack_v1",
+    note: "맹가첩목아 사후 알목하 일대 재편, 세종 16년 영북진 이설·회령진 설치, 이후 도호부 승격(연도 미기재)." },
+  { id: "SRC_GEO_JONGSEONG", sourceType: "sillok", sourceLevel: "contemporary_compilation", title: "세종실록 지리지 — 종성도호부",
+    date: null, url: "https://sillok.history.go.kr/id/kda_40011007", articleId: "kda_40011007",
+    authorOrReporter: null, documentType: "geography", verification: "pack_v1",
+    note: "세종 16 회령을 알목하에 설치 / 17 종성군 설치 / 22 치소를 수주 쪽으로 이동 / 23 도호부 승격·남도 민호 입거." },
+  { id: "SRC_GEO_BURYEONG", sourceType: "sillok", sourceLevel: "contemporary_compilation", title: "세종실록 지리지 — 부령도호부",
+    date: null, url: "https://sillok.history.go.kr/id/kda_40011010", articleId: "kda_40011010",
+    authorOrReporter: null, documentType: "geography", verification: "pack_v1",
+    note: "영북진 선행 방어처, 세종 31 부거 혁파·이설하고 부령도호부·진 설치." },
+  { id: "SRC_GEO_GYEONGWON", sourceType: "sillok", sourceLevel: "contemporary_compilation", title: "세종실록 지리지 — 경원도호부",
+    date: null, url: "https://sillok.history.go.kr/popup/print.do?gubun=kor&id=wda_40011005", articleId: "wda_40011005",
+    authorOrReporter: null, documentType: "geography", verification: "pack_v1",
+    note: "세종 16 옛 변경 거점 회복·축성·남도 민호 이주 결정, 이후 석성으로 개축, 세종 24 진 지휘관(첨절제사 등) 설치." },
+
+  /* ---------------- 『서정록』 ---------------- */
   {
-    id: "SRC_ENCY_SEOJEONGNOK",
-    sourceType: "secondary_reference",
-    sourceLevel: "secondary",
-    title: "한국민족문화대백과사전 「서정록(西征錄)」",
-    date: null,
-    url: "https://encykorea.aks.ac.kr/Article/E0028169",
-    articleId: null,
-    authorOrReporter: "한국학중앙연구원",
-    documentType: null,
-    note: "『서정록』 서지·해제용 2차 참고자료. 이번 세션에서 접속 차단되어 내용 확인 못함. 세부 사건 생성에 사용하지 않음.",
+    id: "SRC_ENCY_SEOJEONGNOK", sourceType: "secondary_reference", sourceLevel: "secondary",
+    title: "한국민족문화대백과사전 「서정록(西征錄)」", date: null,
+    url: "https://encykorea.aks.ac.kr/Article/E0028169", articleId: null, authorOrReporter: "한국학중앙연구원", documentType: null,
+    note: "pack v1 서지: 이천(李蕆) 관련, 현전 목판본 1책(1516 간행), 후손 이순(李純)·관찰사 윤금손(尹金孫) 발문, 서울대 규장각 소장(백과 기술). 내용 범위 1432~1437: 여진 관계·정벌·사민·조세·구휼·지방 보고·조정 대응. 참고 역본: 『서정록』 임홍빈 역편, 국방부전사편찬위원회, 1989. 백과 요약만으로 사건 edge를 만들지 않음.",
+    verification: "pack_v1"
+  },
+  {
+    id: "SRC_SEOJEONGNOK", sourceType: "seojeongnok", sourceLevel: "contemporary_compilation",
+    title: "『서정록(西征錄)』 1516 목판본(규장각 소장) — 원문 미확보", date: null,
+    url: "https://kyu.snu.ac.kr/", articleId: null, authorOrReporter: "이천(李蕆) 관련 기록, 1516 간행(후손 이순 발문)", documentType: null,
+    note: "원문·국역 텍스트를 확보하지 못함. 확보 전까지 어떤 사건의 근거로도 쓰지 않는다(validateData가 not_accessed 사료 사용을 막음).",
     verification: "not_accessed"
   }
 ];

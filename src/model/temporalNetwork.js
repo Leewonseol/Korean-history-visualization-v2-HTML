@@ -6,7 +6,7 @@
 
 /**
  * @param {object} idx  buildIndexes 결과
- * @param {object} f    { from, to, layers:Set, levels:Set, theaters:Set, certainties:Set, sourceTypes:Set, eventIds?:Set }
+ * @param {object} f    { from, to, layers:Set, levels:Set, theaters:Set, certainties:Set, sourceTypes:Set, verifications?:Set, eventIds?:Set }
  */
 export function filterContacts(idx, f) {
   return idx.contacts.filter((c) => {
@@ -16,6 +16,7 @@ export function filterContacts(idx, f) {
     if (f.certainties && !f.certainties.has(c.certainty)) return false;
     if (f.theaters && !c.theater.some((t) => f.theaters.has(t))) return false;
     if (f.sourceTypes && !c.sourceTypes.some((t) => f.sourceTypes.has(t))) return false;
+    if (f.verifications && !f.verifications.has(c.verification)) return false;
     if (f.levels) {
       const ls = idx.levelAt(c.source, c.startDate), lt = idx.levelAt(c.target, c.startDate);
       if (!f.levels.has(ls) || !f.levels.has(lt)) return false;
@@ -28,6 +29,7 @@ export function filterContacts(idx, f) {
 export function eventPasses(idx, ev, f) {
   if (f.theaters && !(ev.theater || []).some((t) => f.theaters.has(t))) return false;
   if (f.certainties && !f.certainties.has(ev.certainty)) return false;
+  if (f.verifications && !f.verifications.has(ev.verification)) return false;
   if (f.sourceTypes) {
     const types = ev.sourceIds.map((s) => idx.sourcesById[s] && idx.sourcesById[s].sourceType);
     if (!types.some((t) => f.sourceTypes.has(t))) return false;

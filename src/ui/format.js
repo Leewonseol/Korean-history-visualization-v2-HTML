@@ -34,6 +34,7 @@ export function relationLine(idx, c, opts = {}) {
     ${personLink(idx, c.source, c.startDate)} → ${personLink(idx, c.target, c.startDate)}
     ${layerChip(c.layer)} <code>${esc(c.relationType)}</code> ${certBadge(c.certainty)}
     <span class="causal" title="${esc(CAUSAL_STATUS[c.causalStatus])}">${esc(c.causalStatus)}</span>
+    ${c.verification && c.verification !== "pack_v1" ? `<span class="verif-tag verif-${esc(c.verification)}" title="${esc(VERIFICATION[c.verification])}">${c.verification === "inherited_v2" ? "v2" : "시드"}</span>` : ""}
     ${opts.showEvent ? `<div class="rel-event">${eventLink(idx, c.eventId)}</div>` : ""}
     ${c.note ? `<div class="rel-note">${esc(c.note)}</div>` : ""}
   </li>`;

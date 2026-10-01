@@ -19,6 +19,7 @@ import { mergeSensitivity, pathIdentityAssumptions } from "../src/analysis/ident
 import { NORMALIZATION_RULES, packLabelsOf, labelLayerCheck, evidenceClassOf } from "../src/data/vocab.js";
 import { loadPack, resolveLocator } from "./pack-v1.mjs";
 import { generateAudit3 } from "./audit-round3.mjs";
+import { generateAudit4, DECISIONS } from "./audit-round4.mjs";
 import { resultCaveats } from "../src/analysis/caveats.js";
 import { PROVENANCE, DERIVATION_RULES, DIRECTION_POLICY, CAUSAL_STATUS, evidenceStatusOf, NARRATIVE_STATUS } from "../src/data/vocab.js";
 import { isDayPrecise, yearOf } from "../src/model/dates.js";
@@ -454,6 +455,47 @@ test("AU3 결과 해석 경고: 동일성 미해결 수·시각 제외 수·규�
   assert.ok(c.normalizedShare > 0 && c.normalizedShare <= 1);
   assert.deepEqual(c.incompleteYears.map((y) => `${y.year}:${y.scopeStatus}`), ["1432:PARTIAL", "1444:NONE", "1449:PARTIAL"]);
   assert.equal(c.legacyIncluded + c.interpretationIncluded, 0);
+});
+
+/* ---------- AU4~6. 4차 감사: 사람 판정 전 — 데이터 불변 ---------- */
+// 3차 감사 커밋 시점의 데이터 수치(회귀 기준). 사람 판정을 반영하는 라운드에서만 의도적으로 갱신한다.
+const ROUND3_COUNTS = {
+  events: 70, relations: 242, people: 149, traces: 173, r1Traces: 18, flaggedTraces: 19,
+  relationClasses: { DIRECT: 20, NORMALIZED: 153, LEGACY: 47, INTERPRETATION: 22, UNKNOWN: 0 },
+  identity: { VERIFIED_SAME: 2, PROBABLE_SAME: 23, UNRESOLVED_DISTINCT: 3, SINGLE_ATTESTATION: 69, COLLECTIVE_OR_OFFICE: 52 },
+  relationCausal: { EXPLICIT_CAUSAL: 20, UNKNOWN: 222 }, defaultInput: 132, temporallyExcluded: 38, aboutExcluded: 3
+};
+test("AU4 회귀: 관계·인물·evidenceClass·identity status·인과 상태 수가 3차 감사와 같다(사람 판정 전 데이터 변경 없음)", () => {
+  const tally = (xs, f) => xs.reduce((m, x) => { const k = f(x); m[k] = (m[k] || 0) + 1; return m; }, {});
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
+  assert.deepEqual({
+    events: DATA.EVENTS.length, relations: idx.contacts.length, people: DATA.PEOPLE.length, traces: DATA.RELATION_TRACES.length,
+    r1Traces: DATA.RELATION_TRACES.filter((t) => t.rules.includes("R1_court_recipient")).length,
+    flaggedTraces: DATA.RELATION_TRACES.filter((t) => t.flags.length).length,
+    relationClasses: countByClass(idx.contacts),
+    identity: tally(DATA.PEOPLE, (p) => idx.identityOf[p.personId].status),
+    relationCausal: tally(idx.contacts, (c) => c.causalStatus),
+    defaultInput: a.contacts.length, temporallyExcluded: a.excludedUncertain, aboutExcluded: a.excludedAbout
+  }, ROUND3_COUNTS);
+});
+test("AU5 4차 감사 문서는 데이터에서 재생성한 내용과 같고, 판정 칸은 모두 비어 있다", () => {
+  const gen = generateAudit4(DATA);
+  for (const [f, body] of Object.entries(gen)) assert.equal(fs.readFileSync(`research/audit3/${f}`, "utf8"), body, `${f}가 최신이 아님 — node tools/build-research.mjs`);
+  const count = (doc, k) => doc.split(DECISIONS[k]).length - 1;
+  assert.equal(count(gen["r1_manual_review.md"], "r1"), ROUND3_COUNTS.r1Traces);
+  assert.equal(count(gen["missing_pack_relations_review.md"], "missing"), 9);
+  assert.equal(count(gen["causal_manual_review.md"], "causal"), 10);
+  assert.equal(count(gen["identity_choeyundeok_manual_review.md"], "identity"), 1);
+  assert.equal(count(gen["identity_hwangboin_manual_review.md"], "identity"), 1);
+  assert.ok(!/☑|☒|\[x\]/i.test(Object.values(gen).join("\n")), "판정이 자동으로 채워짐");
+  assert.ok(gen["r7_temporal_sensitivity.md"].includes("현재 시간순 분석은 기사일 대입 규칙에 크게 의존함"));
+});
+test("AU6 민감도·가상 영향 계산은 메모리 안에서만: 생성 후에도 데이터 수치가 그대로", () => {
+  generateAudit4(DATA);
+  const again = buildIndexes(DATA);
+  assert.equal(again.contacts.length, ROUND3_COUNTS.relations);
+  assert.ok(!again.contacts.some((c) => String(c.id).startsWith("HYP:") || c.relationType === "HYPOTHETICAL"));
+  assert.ok(!Object.keys(again.peopleById).some((k) => k.startsWith("NEW:")));
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", FAILURES above" : ""}`);

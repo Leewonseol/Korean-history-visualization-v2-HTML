@@ -9,6 +9,7 @@ import fs from "node:fs";
 import { DATA } from "../src/data/index.js";
 import { generateResearch } from "./research-gen.mjs";
 import { generateAudit3 } from "./audit-round3.mjs";
+import { generateAudit4 } from "./audit-round4.mjs";
 
 const gen = generateResearch(DATA);
 for (const [file, content] of Object.entries(gen.__files || {})) fs.writeFileSync(new URL(`../research/${file}`, import.meta.url), content);
@@ -25,4 +26,5 @@ for (const [file, sections] of Object.entries(gen)) {
 }
 for (const c of DATA.COVERAGE) console.log(`${c.year}  ${c.coverageStatus.padEnd(22)} scope ${c.scopeStatus.padEnd(8)} sources ${c.sourceIds.length}${c.scopeStatus === "PARTIAL" ? `  — 부분 조사(${c.scope}): 다른 연도와 단순 비교 금지` : ""}${c.coverageStatus === "NOT_COVERED" ? "  — " + c.note : ""}`);
 for (const [f, body] of Object.entries(generateAudit3(DATA))) fs.writeFileSync(new URL(`../research/audit3/${f}`, import.meta.url), body);
+for (const [f, body] of Object.entries(generateAudit4(DATA))) fs.writeFileSync(new URL(`../research/audit3/${f}`, import.meta.url), body);
 console.log("research tables regenerated (+ research/audit3)");

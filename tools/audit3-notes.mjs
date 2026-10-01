@@ -104,7 +104,7 @@ export const CAUSAL_NOTES = {
   "pack_v1:E1433_0516_B:TITLE:L332": {
     trigger: "bestowed as campaign rewards — 하사의 성격(정벌 포상)을 말함",
     notSequence: "'정벌 포상으로서' 하사했다는 성격 진술",
-    candidate: { relation: "REVIEW — 근거가 pack 제목(검증자 요약 문장)이며 본문 줄에는 이유 진술이 없음", link: "REVIEW — 같은 이유 + 연결 대상이 공격 사건 하나로 좁혀짐" }
+    candidate: { relation: "REVIEW — 근거가 pack 제목 줄이며 본문 줄에는 이유 진술이 없음", link: "REVIEW — 같은 이유 + 연결 대상이 공격 사건 하나로 좁혀짐" }
   },
   "pack_v1:E1433_0517:TITLE:L354": {
     trigger: "for campaign dead and sick — 예우·구휼의 대상 범주",

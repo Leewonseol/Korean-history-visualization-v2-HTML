@@ -18,6 +18,8 @@ import { missingnessReport } from "../src/analysis/missingness.js";
 import { mergeSensitivity, pathIdentityAssumptions } from "../src/analysis/identitySensitivity.js";
 import { NORMALIZATION_RULES, packLabelsOf, labelLayerCheck, evidenceClassOf } from "../src/data/vocab.js";
 import { loadPack, resolveLocator } from "./pack-v1.mjs";
+import { generateAudit3 } from "./audit-round3.mjs";
+import { resultCaveats } from "../src/analysis/caveats.js";
 import { PROVENANCE, DERIVATION_RULES, DIRECTION_POLICY, CAUSAL_STATUS, evidenceStatusOf, NARRATIVE_STATUS } from "../src/data/vocab.js";
 import { isDayPrecise, yearOf } from "../src/model/dates.js";
 import { generateResearch } from "./research-gen.mjs";
@@ -427,6 +429,31 @@ test("CL1 스토리 claim: 기본 범위에서 보이는 claim은 DIRECT/NORMALI
   const visible = claims.filter((c) => DEFAULT_SCOPE.classes.has(c.evidenceClass));
   assert.ok(visible.every((c) => ["DIRECT", "NORMALIZED"].includes(c.evidenceClass)));
   assert.ok(claims.filter((c) => c.claimType === "NARRATIVE").every((c) => c.evidenceClass === "INTERPRETATION"));
+});
+
+/* ---------- AU. 3차 감사 검토 문서 ---------- */
+test("AU1 3차 감사 문서는 데이터에서 재생성한 내용과 같고(동기화), 판정 칸은 비어 있다(자동 판정 없음)", () => {
+  const gen = generateAudit3(DATA);
+  for (const [f, body] of Object.entries(gen)) assert.equal(fs.readFileSync(`research/audit3/${f}`, "utf8"), body, `${f}가 최신이 아님 — node tools/build-research.mjs`);
+  const flagged = DATA.RELATION_TRACES.filter((t) => t.flags.length).length;
+  assert.equal((gen["flagged_edges_review.md"].match(/^\*\*판정\*\* ☐ KEEP ☐ DOWNGRADE_TO_INTERPRETATION ☐ SPLIT ☐ REMOVE ☐ NEEDS_SOURCE/gm) || []).length, flagged);
+  assert.ok(!/☑|☒|\[x\]/i.test(Object.values(gen).join("\n")), "판정이 자동으로 채워짐");
+  const causal = idx.contacts.filter((c) => c.causalStatus === "EXPLICIT_CAUSAL").length + DATA.EVENTS.flatMap((e) => (e.eventLinks || []).filter((l) => l.causalStatus === "EXPLICIT_CAUSAL")).length;
+  assert.equal((gen["explicit_causal_audit.md"].match(/^\| \d+ \| (관계|사건 연결) \|/gm) || []).length, causal);
+  const probable = DATA.PEOPLE.filter((p) => idx.identityOf[p.personId].status === "PROBABLE_SAME").length;
+  assert.equal((gen["probable_same_identity_audit.md"].match(/\| PROBABLE_SAME \|/g) || []).length, probable);
+});
+test("AU2 검토 라운드 동안 동일성 자동 승격 없음: 최윤덕·황보인 PROBABLE_SAME, VERIFIED_SAME은 세종·이천뿐", () => {
+  assert.equal(idx.identityOf.JO_CHOEYUNDEOK.status, "PROBABLE_SAME");
+  assert.equal(idx.identityOf.JO_HWANGBOIN.status, "PROBABLE_SAME");
+});
+test("AU3 결과 해석 경고: 동일성 미해결 수·시각 제외 수·규칙 파생 비중·불완전 연도를 함께 계산", () => {
+  const a = analysisContacts(idx, W, "CERTAIN_ORDER");
+  const c = resultCaveats(idx, a, W);
+  assert.ok(c.unresolvedIdentity > 0 && c.temporallyExcluded === a.excludedUncertain);
+  assert.ok(c.normalizedShare > 0 && c.normalizedShare <= 1);
+  assert.deepEqual(c.incompleteYears.map((y) => `${y.year}:${y.scopeStatus}`), ["1432:PARTIAL", "1444:NONE", "1449:PARTIAL"]);
+  assert.equal(c.legacyIncluded + c.interpretationIncluded, 0);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", FAILURES above" : ""}`);

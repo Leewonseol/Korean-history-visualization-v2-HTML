@@ -6,7 +6,7 @@
    - 연·월 단위 사건은 점이 아니라 구간으로, '기사일 이전' 사건은 기사일에 '이전' 표시로 그린다
    ========================================================================== */
 import { monthIndex, yearOf, formatDate, formatRange } from "../model/dates.js";
-import { CERTAINTY, COVERAGE_STATUS } from "../data/vocab.js";
+import { CERTAINTY, COVERAGE_STATUS, COVERAGE_SCOPE } from "../data/vocab.js";
 
 export const NOT_COVERED_LABEL = "현재 검증팩에서 미조사/미수록";
 
@@ -29,7 +29,7 @@ export function createTimeline(idx, state, setCursor) {
         title="${y}: ${cov.coverageStatus === "NOT_COVERED" ? NOT_COVERED_LABEL : COVERAGE_STATUS[cov.coverageStatus]} — ${cov.note.replace(/"/g, "'")}">${y}<small>${cov.coverageStatus === "NOT_COVERED" ? " 미수록" : ""}</small></button>`);
     } else {
       const part = cov.scopeStatus === "PARTIAL";
-      yearBtns.push(`<button type="button" class="cov-${cov.coverageStatus} scope-${cov.scopeStatus}" data-year="${y}" data-idx="${first}" title="${y}: ${COVERAGE_STATUS[cov.coverageStatus]} · 조사 범위 ${cov.scopeStatus}${part ? ` (${cov.scope}) — 다른 연도와 사건 수를 단순 비교하지 말 것` : ""}">${y}${part ? "<small> 부분</small>" : ""}</button>`);
+      yearBtns.push(`<button type="button" class="cov-${cov.coverageStatus} scope-${cov.scopeStatus}" data-year="${y}" data-idx="${first}" title="${y}: ${COVERAGE_STATUS[cov.coverageStatus]} · 조사 범위 ${cov.scopeStatus} — ${COVERAGE_SCOPE[cov.scopeStatus]}${cov.scopeStatus === "FULL" ? " (전수 조사 완료 아님)" : ""}${part ? ` (${cov.scope}) — 다른 연도와 사건 수를 단순 비교하지 말 것` : ""}">${y}${part ? "<small> 부분</small>" : ""}</button>`);
     }
   }
   $("yearJumps").innerHTML = yearBtns.join("");

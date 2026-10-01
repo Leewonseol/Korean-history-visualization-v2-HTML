@@ -221,8 +221,13 @@ certainty(내용의 확실성)와 provenance(근거 계보)는 별개 축이다:
 ## 9. coverage(연도별 조사 범위)
 
 `src/data/coverage.js`가 연도별 상태를 직접 기록한다(VERIFIED_WITH_EVENTS / VERIFIED_NO_RELEVANT_EVENT / NOT_COVERED / PARTIAL / UNKNOWN).
-타임라인·연구 문서 생성기·검증기는 이 표를 읽으며 사건 유무로 추론하지 않는다. 1444년은 NOT_COVERED —
+타임라인·연구 문서 생성기·검증기는 이 표를 읽으며 사건 유무로 추론하지 않는다.
+**FULL은 '연도 전체가 조사 기간 안'이라는 뜻일 뿐 '전수 조사 완료'가 아니다** — 모든 연도의 기사는 seed set이다. PARTIAL(1432·1449)·NONE(1444)과 함께 연도 간 수치 비교에 쓰지 말 것. 1444년은 NOT_COVERED —
 '현재 검증팩에서 미조사/미수록'이며 그 해에 사건이 없었다는 뜻이 아니다. 검증 연도도 전수 조사가 아니다(completeness SEED_ONLY).
+
+## 9-1. 결과 해석 경고
+
+중심성·경로 결과는 숫자만 단독으로 보여 주지 않는다. 분석 탭·인물 탭·노드 크기 지표에는 항상 (1) 동일성 미해결 노드 수, (2) 시각 불확실로 제외된 관계 수, (3) 규칙 파생 관계 비중, (4) 조사 범위 불완전 연도를 함께 표시한다(`src/analysis/caveats.js`).
 
 ## 10. 현재 데이터 통계
 

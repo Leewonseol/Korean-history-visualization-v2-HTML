@@ -119,6 +119,9 @@ await page.click('.tab[data-tab="analysis"]');
 const note = await page.textContent("#tab-analysis .note");
 check("분석 패널: CERTAIN_ORDER 판정·포함/제외 수·근거 등급·동일성 미해결 수", note.includes("CERTAIN_ORDER") && /포함\s*\d+/.test(note) && /시각 불확실\s*\d+/.test(note)
   && note.includes("직접 사료 근거") && /동일성 미해결 노드\(identity unresolved node count\):\s*\d+/.test(note), note.replace(/\s+/g, " ").slice(0, 160));
+const cavTxt = await page.textContent("#tab-analysis .caveat-box");
+check("분석 결과 옆 자동 경고: 동일성 미해결·시각 제외·규칙 파생 비중·불완전 연도", /동일성 미해결 노드 \d+/.test(cavTxt) && /시각 불확실로 제외된 관계 \d+/.test(cavTxt)
+  && /규칙 파생 관계 비중 \d+%/.test(cavTxt) && cavTxt.includes("조사 범위 불완전 연도") && cavTxt.includes("전수 조사 완료"), cavTxt.replace(/\s+/g, " ").slice(0, 160));
 const missTxt = await page.textContent("#tab-analysis");
 check("분석 패널: missingness(layer·근거 등급·relation type·인물별 제외)와 병합 민감도", missTxt.includes("시간 불확실성 missingness") && missTxt.includes("relation type") && missTxt.includes("인물(제외 많은 순)") && missTxt.includes("동일성 병합 민감도"));
 await page.selectOption("#pathFrom", "JO_SEJONG");
@@ -212,11 +215,13 @@ check("'기사일 이전' 사건 날짜를 범위로 표시", (await page.textCo
 /* 8c. 동명이인 미해결 노드 */
 await app(() => window.__app.selectPerson("JO_HONGSASEOK_1437"));
 const ptxt = await page.textContent("#tab-person");
+check("인물 패널 지표 옆 해석 경고", ptxt.includes("동일성 미해결 노드") && ptxt.includes("규칙 파생 관계 비중"));
 check("인물 패널: 홍사석(1437) UNRESOLVED_DISTINCT · 동일인 가능성 · 병합 안 함", ptxt.includes("UNRESOLVED_DISTINCT") && ptxt.includes("동일인 가능성") && ptxt.includes("병합하지 않음"));
 
 /* 9. 지표 노드 크기 · 스토리 · 장소 */
 await app(() => window.__app.setCursor(window.__app.idx.events.length - 1));   // 전체 기간 누적 상태에서
 await page.selectOption("#metricSelect", "betweenness");
+check("노드 크기 지표 사용 시 네트워크 상태줄에 해석 경고", (await page.textContent("#netStatus")).includes("동일성 미해결"));
 const sizes = await app(() => [...new Set(window.__app.net.cy.nodes(".actor").map((n) => Math.round(n.data("size"))))].length);
 check("노드 크기 지표 적용", sizes > 1);
 await page.selectOption("#metricSelect", "none");

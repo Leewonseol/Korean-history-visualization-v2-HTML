@@ -3,7 +3,7 @@
    서사 적합성 판단용 지표(순위·주인공 자동 선정 없음), 연도별 trajectory
    ========================================================================== */
 import { LEVELS, AFFILIATIONS, ENTITY_TYPES, IDENTITY_STATUS } from "../data/vocab.js";
-import { esc, personLink, eventLink, sourceLink, relationLine, certBadge, formatDate, evidenceBadge, eventDateLabel } from "./format.js";
+import { esc, personLink, eventLink, sourceLink, relationLine, certBadge, formatDate, evidenceBadge, eventDateLabel, caveatBox } from "./format.js";
 import { evidenceScope, select } from "../model/evidence.js";
 import { personProfile } from "../analysis/centrality.js";
 import { yearLineChart } from "./charts.js";
@@ -79,6 +79,8 @@ export function renderPersonPanel(el, idx, personId, ctx) {
     <table class="kv-table"><tr><th></th><th>전체 데이터</th><th>현재 분석 창</th></tr>
       ${rows.map(([k, a, b]) => `<tr><td>${k}</td><td>${a}</td><td>${b}</td></tr>`).join("")}
     </table>
+    ${caveatBox(ctx.caveats, true)}
+    ${["PROBABLE_SAME", "UNRESOLVED", "UNRESOLVED_DISTINCT"].includes(ident.status) ? `<p class="warn small">이 인물의 동일성은 미해결(${esc(ident.status)}) — 아래 지표는 같은 이름의 등장을 한 사람으로 본 결과입니다.</p>` : ""}
     ${m ? `<p class="muted small">현재 창 temporal 지표: in ${m.inDeg} · out ${m.outDeg} · closeness ${m.closeness.toFixed(3)} · betweenness ${m.betweenness.toFixed(2)} · broadcast ${m.broadcast.toFixed(3)} · receive ${m.receive.toFixed(3)}</p>` : "<p class='muted small'>현재 분석 창·필터에서 관계 없음</p>"}
 
     <h4>연도별 centrality trajectory <small class="muted">${traj ? `${traj.years[0] || ""}~${traj.years[traj.years.length - 1] || ""}` : ""}</small></h4>

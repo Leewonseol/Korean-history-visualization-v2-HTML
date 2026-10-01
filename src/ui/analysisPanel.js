@@ -4,7 +4,7 @@
    ========================================================================== */
 import { LAYERS } from "../data/vocab.js";
 import { METRICS } from "./filters.js";
-import { esc, personLink, layerChip, certBadge, evidenceBadge, eventDateLabel, formatRange, evidenceClassSummary, classBadge } from "./format.js";
+import { esc, personLink, layerChip, certBadge, evidenceBadge, eventDateLabel, formatRange, evidenceClassSummary, classBadge, caveatBox } from "./format.js";
 import { ORDER_MODES } from "../model/temporalNetwork.js";
 import { yearLineChart } from "./charts.js";
 
@@ -87,6 +87,7 @@ export function renderAnalysisPanel(el, idx, ctx) {
     <p class="muted small">시간 순행 경로는 정보·명령이 '흐를 수 있었던' 통로일 뿐 인과관계를 뜻하지 않습니다. 인과는 사건 탭의 causalStatus를 보세요.
       연·월 단위 또는 '기사일 이전' 날짜에는 가짜 순서를 매기지 않습니다.
       <b>CERTAIN_ORDER</b>: ${esc(ORDER_MODES.CERTAIN_ORDER)}. <b>TEMPORALLY_NOT_EXCLUDED</b>: ${esc(ORDER_MODES.TEMPORALLY_NOT_EXCLUDED)} — 순서가 확정되지 않은 단계가 있으면 UNCERTAIN.</p>
+    ${pathUI.result ? caveatBox(ctx.caveats) : ""}
     ${pathResult}
 
     <h4>피드백 루프 <small class="muted">anchor → … → anchor, 시간 순행</small></h4>
@@ -94,9 +95,11 @@ export function renderAnalysisPanel(el, idx, ctx) {
       <select id="loopAnchor">${nodeOpts(pathUI.loopAnchor)}</select>
       <button type="button" id="btnLoops" class="btn btn-ghost btn-sm">찾기</button>
     </div>
+    ${pathUI.loops && pathUI.loops.length ? caveatBox(ctx.caveats, true) : ""}
     ${loops}
 
     <h4>Temporal metrics <small class="muted">정렬: ${esc(METRICS[sortKey] || sortKey)} (왼쪽 '노드 크기 지표'로 변경)</small></h4>
+    ${caveatBox(ctx.caveats)}
     ${table}
     <details class="table-view"><summary>지표 정의</summary>
       <ul class="small">
@@ -115,12 +118,14 @@ export function renderAnalysisPanel(el, idx, ctx) {
     <h4>연도별 centrality trajectory <small class="muted">${trajectory.years[0] || ""}~${trajectory.years[trajectory.years.length - 1] || ""}</small></h4>
     <p class="muted small">${ctx.trajectoryNote} · 연도 slice 제외(시각 불확실): ${trajectory.excluded.map((n, i) => `${trajectory.years[i]}:${n}`).join(" ")}
       · 빈 칸 = coverage 미수록 연도(현재 검증팩에서 미조사/미수록) · 아래 띠 = 조사 범위(전체/부분/NA). 속 빈 점 = 부분 조사 연도 — 다른 연도와 값의 크기를 단순 비교하지 마세요.</p>
+    ${caveatBox(ctx.caveats, true)}
     ${charts}
 
     ${missingnessHtml(idx, ctx.missingness)}
     ${mergeHtml(idx, ctx.mergeSensitivity)}
 
     <h4>layer별 중심성 <small class="muted">노드별 layer 관계 수(in+out)</small></h4>
+    ${caveatBox(ctx.caveats, true)}
     ${layerTable}
   `;
 }

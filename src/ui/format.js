@@ -83,3 +83,20 @@ export function relationLine(idx, c, opts = {}) {
   </li>`;
 }
 export { formatDate, formatRange };
+
+/* 중심성·경로 결과 옆에 항상 붙이는 해석 경고 */
+export function caveatBox(c, compact = false) {
+  if (!c) return "";
+  const yrs = c.incompleteYears.map((y) => `${y.year} ${y.scopeStatus}${y.scopeStatus === "PARTIAL" ? `(${y.scope})` : y.scopeStatus === "NONE" ? "(NA)" : ""}`).join(", ") || "없음";
+  const items = [
+    `동일성 미해결 노드 <b>${c.unresolvedIdentity}</b>/${c.persons}`,
+    `시각 불확실로 제외된 관계 <b>${c.temporallyExcluded}</b>(포함 ${c.included})`,
+    `규칙 파생 관계 비중 <b>${(c.normalizedShare * 100).toFixed(0)}%</b>(직접 ${c.direct} · 파생 ${c.normalized})`,
+    `조사 범위 불완전 연도 <b>${yrs}</b>`
+  ];
+  if (c.legacyIncluded || c.interpretationIncluded) items.push(`<span class="err">opt-in 포함: legacy ${c.legacyIncluded} · 해석 ${c.interpretationIncluded}</span>`);
+  return compact
+    ? `<span class="caveat-inline">⚠ ${items.join(" · ")}</span>`
+    : `<div class="caveat-box" role="note"><b>⚠ 이 수치를 읽기 전에</b><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>
+      <div class="small muted">FULL 연도도 '전수 조사 완료'가 아니다(seed 기사만). 동일성 미해결 노드의 중심성은 '같은 이름 = 같은 사람' 가정에 의존한다.</div></div>`;
+}

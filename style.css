@@ -280,3 +280,8 @@ ul.plain li { padding: 3px 0; border-bottom: 1px dotted var(--border); }
 details.trace { display: inline; }
 details.trace summary { display: inline; cursor: pointer; font-size: 10.5px; color: var(--ink-soft); }
 details.trace[open] > div { margin: 2px 0 4px; padding: 4px 6px; background: #f6f7f9; border-radius: 4px; }
+
+/* ---------- 3차 감사: 결과 해석 경고 ---------- */
+.caveat-box { border: 1px solid #e0b252; background: #fff8e8; border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: 12px; }
+.caveat-box ul { margin: 4px 0; padding-left: 18px; }
+.caveat-inline { display: inline-block; font-size: 11px; color: var(--warn-ink); background: #fff8e8; border-radius: 4px; padding: 1px 6px; margin: 2px 0; }

@@ -10,6 +10,7 @@ import { filterContacts, analysisContacts, eventPasses } from "./model/temporalN
 import { evidenceScope, allows, select, countByClass } from "./model/evidence.js";
 import { missingnessReport } from "./analysis/missingness.js";
 import { unresolvedNodeCount, pathIdentityAssumptions, mergeSensitivity } from "./analysis/identitySensitivity.js";
+import { resultCaveats } from "./analysis/caveats.js";
 import { yearStart, yearEnd, minDate, maxDate, shiftMonths, formatDate } from "./model/dates.js";
 import { computeMetrics } from "./analysis/centrality.js";
 import { temporalPath, isTimeRespecting, feedbackLoops } from "./analysis/temporalPaths.js";
@@ -21,7 +22,7 @@ import { renderEventPanel } from "./ui/eventPanel.js";
 import { renderPersonPanel } from "./ui/personPanel.js";
 import { renderAnalysisPanel } from "./ui/analysisPanel.js";
 import { createStoryMode } from "./ui/storyMode.js";
-import { esc, layerChip, relationLine, evidenceClassSummary } from "./ui/format.js";
+import { esc, layerChip, relationLine, evidenceClassSummary, caveatBox } from "./ui/format.js";
 import { NOT_COVERED_LABEL } from "./ui/timeline.js";
 
 const $ = (id) => document.getElementById(id);
@@ -124,7 +125,8 @@ function update() {
   // 경로 선택 목록: TEMPORALLY_NOT_EXCLUDED 판정으로 기간 안에 있을 수 있는 경로 대상 관계의 노드(strict에서 고립된 노드도 고를 수 있게)
   const pathNodes = [...new Set(analysisContacts(idx, { ...fb, ...win }, "TEMPORALLY_NOT_EXCLUDED").contacts.flatMap((c) => [c.source, c.target]))]
     .sort((a, b) => idx.peopleById[a].canonicalName.localeCompare(idx.peopleById[b].canonicalName, "ko"));
-  last = { displayContacts, analysisContacts: analysis.contacts, analysis, metricsResult, win, disp, pathNodes };
+  const caveats = resultCaveats(idx, analysis, win);
+  last = { displayContacts, analysisContacts: analysis.contacts, analysis, metricsResult, win, disp, pathNodes, caveats };
   timeline.render((e) => eventPasses(idx, e, fb));
   $("netStatus").innerHTML = "";
   const st = document.createElement("div");
@@ -132,6 +134,12 @@ function update() {
   const dataset = datasetLabel();
   st.textContent = `표시: ${disp.eventIds ? "현재 사건" : `${disp.from.replace(/-00-00$/, "")} ~ ${disp.to.replace(/-99-99$/, "")}`} · 근거 ${dataset} · edge(contact) ${displayContacts.length} · 노드 ${net.cy.nodes(".actor").length}`;
   $("netStatus").appendChild(st);
+  if (state.f.metric !== "none") {
+    const cv = document.createElement("div");
+    cv.className = "net-summary";
+    cv.innerHTML = `노드 크기 = ${esc(state.f.metric)} · ${caveatBox(last.caveats, true)}`;
+    $("netStatus").appendChild(cv);
+  }
   if (state.pathUI.result) net.highlightPath(state.pathUI.result.steps);
   applySpotlight();
   renderPanels();
@@ -156,7 +164,8 @@ function renderPanels() {
   if (state.tab === "person") {
     const traj = state.selected ? yearlyTrajectories(idx, { ...baseFilters(), ...last.win }, [state.selected]) : null;
     renderPersonPanel($("tab-person"), idx, state.selected, {
-      cursorDate: cursorDate(), windowContacts: last.analysisContacts, metrics: last.metricsResult.metrics, trajectory: traj, filters: baseFilters()
+      cursorDate: cursorDate(), windowContacts: last.analysisContacts, metrics: last.metricsResult.metrics, trajectory: traj, filters: baseFilters(),
+      caveats: last.caveats
     });
   }
   if (state.tab === "analysis") {
@@ -170,7 +179,7 @@ function renderPanels() {
       layerMatrix: layerDegreeMatrix(last.analysisContacts), pathUI: state.pathUI, cursorDate: cursorDate(),
       contactCount: last.analysisContacts.length, excludedUncertain: last.analysis.excludedUncertain, excludedAbout: last.analysis.excludedAbout,
       datasetLabel: datasetLabel(), pathNodes: last.pathNodes, eventAllowed: (e) => allows(evidenceScope(baseFilters()), e),
-      evidenceCounts: countByClass(last.analysisContacts), shownCounts: countByClass(last.displayContacts),
+      evidenceCounts: countByClass(last.analysisContacts), shownCounts: countByClass(last.displayContacts), caveats: last.caveats,
       missingness: missingnessReport(last.analysis),
       identity: unresolvedNodeCount(idx, nodes),
       mergeSensitivity: mergeSensitivity(idx, last.analysisContacts, last.win, { scope: last.analysis.scope })
@@ -260,7 +269,7 @@ document.addEventListener("click", (e) => {
     <span class="muted">(사료 id가 붙어 있다는 것과 원문에 관계가 직접 나타난다는 것은 다르다 — 기본 지표는 직접+규칙 파생만)</span>.
     <b>${NOT_COVERED_LABEL}:</b> ${nc.join(", ") || "없음"} <span class="muted">(NA — 0이 아님)</span> ·
     <b>부분 조사 연도:</b> ${partial.join(", ") || "없음"} <span class="muted">(사건 수를 다른 연도와 단순 비교하지 말 것)</span>.
-    검증 연도도 전수 조사가 아닌 seed set입니다. 작업 범위 ${formatDate("1432-12-09")} ~ ${formatDate("1449-07-07")}.`;
+    <b>FULL 연도도 '전수 조사 완료'가 아니다</b> — FULL은 연도 전체가 조사 기간 안이라는 뜻일 뿐, 기사는 seed set입니다. 작업 범위 ${formatDate("1432-12-09")} ~ ${formatDate("1449-07-07")}.`;
 })();
 
 update();

@@ -21,6 +21,7 @@ import { createFilters, defaultFilterState } from "./ui/filters.js";
 import { renderEventPanel } from "./ui/eventPanel.js";
 import { renderPersonPanel } from "./ui/personPanel.js";
 import { renderAnalysisPanel } from "./ui/analysisPanel.js";
+import { renderOpeningWorlds } from "./ui/openingWorldsPanel.js";
 import { createStoryMode } from "./ui/storyMode.js";
 import { esc, layerChip, relationLine, evidenceClassSummary, caveatBox } from "./ui/format.js";
 import { NOT_COVERED_LABEL } from "./ui/timeline.js";
@@ -88,7 +89,7 @@ function selectPerson(id) {
 function switchTab(t) {
   state.tab = t;
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
-  ["event", "person", "analysis"].forEach((k) => $(`tab-${k}`).classList.toggle("hidden", k !== t));
+  ["event", "person", "analysis", "worlds"].forEach((k) => $(`tab-${k}`).classList.toggle("hidden", k !== t));
 }
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { switchTab(b.dataset.tab); renderPanels(); }));
 
@@ -159,6 +160,7 @@ function applySpotlight() {
 }
 
 function renderPanels() {
+  if (state.tab === "worlds") return renderOpeningWorlds($("tab-worlds"));
   const ev = idx.events[state.cursor];
   if (state.tab === "event") renderEventPanel($("tab-event"), idx, ev, DATA, baseFilters());
   if (state.tab === "person") {
